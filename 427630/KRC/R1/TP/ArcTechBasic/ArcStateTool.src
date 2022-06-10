@@ -1,0 +1,202 @@
+&ACCESS  R
+&COMMENT ATB State Tool
+DEF  ArcStateTool( )
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+
+GLOBAL DEFFCT CHAR[256] GetStringForErrorState(errorstate:in)
+DECL ArcErrorState errorstate
+DECL CHAR stateString[256]
+  
+SWITCH errorstate
+CASE #Nothing
+  stateString[] = "Nothing"
+CASE #IRStopMess
+  stateString[] = "IRStopMess"
+CASE #InputError
+  stateString[] = "InputError"
+CASE #TechStop
+  stateString[] = "TechStop"
+CASE #StillstandCtrl
+  stateString[] = "StillstandCtrl"
+CASE #WatchdogCtrl
+  stateString[] = "WatchdogCtrl"
+CASE #ConfigurationCtrl
+  stateString[] = "ConfigurationCtrl"
+CASE #BurnFreeCtrl
+  stateString[] = "BurnFreeCtrl"
+CASE #DefaultError
+  stateString[] = "DefaultError"
+DEFAULT
+  msg("Internal Error ArcState Tool: Switch errorstate")
+  HALT
+  stateString[] = "unknown"
+ENDSWITCH
+
+RETURN(stateString[])
+ENDFCT
+
+GLOBAL DEFFCT ArcErrorState GetErrorStateForString(statestring:in)
+DECL CHAR stateString[]
+   IF strcomp(statestring[],"Nothing",#Not_CASE_Sens) THEN
+      RETURN(#Nothing)
+   ENDIF
+   IF strcomp(statestring[],"IRStopMess",#Not_CASE_Sens) THEN
+      RETURN(#IRStopMess)
+   ENDIF
+   IF strcomp(statestring[],"InputError",#Not_CASE_Sens) THEN
+      RETURN(#InputError)
+   ENDIF
+   IF strcomp(statestring[],"TechStop",#Not_CASE_Sens) THEN
+      RETURN(#TechStop)
+   ENDIF
+   IF strcomp(statestring[],"StillstandCtrl",#Not_CASE_Sens) THEN
+      RETURN(#StillstandCtrl)
+   ENDIF
+    IF strcomp(statestring[],"WatchdogCtrl",#Not_CASE_Sens) THEN
+      RETURN(#WatchdogCtrl)
+   ENDIF
+   IF strcomp(statestring[],"ConfigurationCtrl",#Not_CASE_Sens) THEN
+      RETURN(#ConfigurationCtrl)
+   ENDIF
+   IF strcomp(statestring[],"BurnFreeCtrl",#Not_CASE_Sens) THEN
+      RETURN(#BurnFreeCtrl)
+   ENDIF  
+   IF strcomp(statestring[],"DefaultError",#Not_CASE_Sens) THEN
+      RETURN(#DefaultError)
+   ENDIF
+   RETURN(#Nothing)
+ENDFCT
+
+GLOBAL DEFFCT CHAR[256] GetStringForState(state:in)
+DECL ArcState state
+DECL CHAR stateString[256]
+  
+SWITCH state
+CASE #Init
+  stateString[] = "Init"
+CASE #Error
+  stateString[] = "Error"
+CASE #CheckRobotReady
+  stateString[] = "CheckRobotReady"
+CASE #CheckPeriphery
+  stateString[] = "CheckPeriphery"
+CASE #PrepIgnition
+  stateString[] = "PrepIgnition"
+CASE #Ignition
+  stateString[] = "Ignition"
+CASE #WaitArcStable
+  stateString[] = "WaitArcStable"
+CASE #IgnitionFailed
+  stateString[] = "IgnitionFailed"
+CASE #RobotNotRdy
+  stateString[] = "RobotNotRdy"
+CASE #PowerSourceNotRdy
+  stateString[] = "PowerSourceNotRdy"
+CASE #PeriNotRdy
+  stateString[] = "PeriNotRdy"
+CASE #NoGasFlow
+  stateString[] = "NoGasFlow"
+CASE #BreakStateMachine   
+   stateString[] = "BreakStateMachine"
+CASE #CheckPowerSource   
+   stateString[] = "CheckPowerSource"
+CASE #IgnitionErrorRestart
+   stateString[] = "IgnitionErrorRestart"
+CASE #IgnitionErrorStrategy
+   stateString[] = "IgnitionErrorStrategy"
+CASE #Welding
+   stateString[] = "Welding"
+CASE #WeldingDone
+   stateString[] = "WeldingDone"
+CASE #StopWelding
+   stateString[] = "StopWelding"
+CASE #GasPostFlow
+   stateString[] = "GasPostFlow"
+CASE #StopGasFlow
+   stateString[] = "StopGasFlow"
+CASE #RestartAfterError
+   stateString[] = "RestartAfterError" 
+DEFAULT
+  msg("Internal Error ArcState Tool: Switch state")
+  HALT
+  stateString[] = "unknown"
+ENDSWITCH
+
+RETURN(stateString[])
+ENDFCT
+  
+GLOBAL DEFFCT ArcState GetStateForString(statestring:in)
+DECL CHAR stateString[]
+   IF strcomp(statestring[],"Init",#Not_CASE_Sens) THEN
+      RETURN(#Init)
+   ENDIF
+   IF strcomp(statestring[],"Error",#Not_CASE_Sens) THEN
+      RETURN(#Error)
+   ENDIF
+   IF strcomp(statestring[],"CheckRobotReady",#Not_CASE_Sens) THEN
+      RETURN(#CheckRobotReady)
+   ENDIF
+   IF strcomp(statestring[],"CheckPeriphery",#Not_CASE_Sens) THEN
+      RETURN(#CheckPeriphery)
+   ENDIF
+    IF strcomp(statestring[],"PrepIgnition",#Not_CASE_Sens) THEN
+      RETURN(#PrepIgnition)
+   ENDIF
+   IF strcomp(statestring[],"Ignition",#Not_CASE_Sens) THEN
+      RETURN(#Ignition)
+   ENDIF
+   IF strcomp(statestring[],"WaitArcStable",#Not_CASE_Sens) THEN
+      RETURN(#WaitArcStable)
+   ENDIF  
+   IF strcomp(statestring[],"IgnitionFailed",#Not_CASE_Sens) THEN
+      RETURN(#IgnitionFailed)
+   ENDIF  
+   IF strcomp(statestring[],"RobotNotRdy",#Not_CASE_Sens) THEN
+      RETURN(#RobotNotRdy)
+   ENDIF
+   IF strcomp(statestring[],"PowerSourceNotRdy",#Not_CASE_Sens) THEN
+      RETURN(#PowerSourceNotRdy)
+   ENDIF
+   IF strcomp(statestring[],"PeriNotRdy",#Not_CASE_Sens) THEN
+      RETURN(#PeriNotRdy)
+   ENDIF
+   IF strcomp(statestring[],"NoGasFlow",#Not_CASE_Sens) THEN
+      RETURN(#NoGasFlow)
+   ENDIF    
+   IF strcomp(statestring[],"BreakStateMachine",#Not_CASE_Sens) THEN
+      RETURN(#BreakStateMachine)
+   ENDIF    
+   IF strcomp(statestring[],"CheckPowerSource",#Not_CASE_Sens) THEN
+      RETURN(#CheckPowerSource)
+   ENDIF  
+   IF strcomp(statestring[],"IgnitionErrorRestart",#Not_Case_Sens) THEN
+      RETURN(#IgnitionErrorRestart)
+   ENDIF
+   IF strcomp(statestring[],"IgnitionErrorStrategy",#Not_Case_Sens) THEN
+      RETURN(#IgnitionErrorStrategy)
+   ENDIF
+   IF strcomp(statestring[],"Welding",#Not_Case_Sens) THEN
+      RETURN(#Welding)
+   ENDIF
+   IF strcomp(statestring[],"WeldingDone",#Not_Case_Sens) THEN
+      RETURN(#WeldingDone)
+   ENDIF
+   IF strcomp(statestring[],"StopWelding",#Not_Case_Sens) THEN
+      RETURN(#StopWelding)
+   ENDIF
+   IF strcomp(statestring[],"GasPostFlow",#Not_Case_Sens) THEN
+      RETURN(#GasPostFlow)
+   ENDIF
+   IF strcomp(statestring[],"StopGasFlow",#Not_Case_Sens) THEN
+      RETURN(#StopGasFlow)
+   ENDIF
+
+   IF strcomp(statestring[],"RestartAfterError",#Not_Case_Sens) THEN
+      RETURN(#RestartAfterError)
+   ENDIF
+   RETURN(#Nothing)
+ENDFCT

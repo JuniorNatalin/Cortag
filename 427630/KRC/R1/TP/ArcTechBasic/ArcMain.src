@@ -1,0 +1,1929 @@
+&ACCESS  R
+&COMMENT ATB base module
+DEF  ArcMain()
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;*****************************************************************************************
+;ArcInit command self
+;organized if necessary
+;*****************************************************************************************
+DEF  ArcInit()
+;FOLD Details
+  ATB_PreDefinitionTime=ABS(ATBg_PreDefinitionTime/1000.0) ;ms-->[s] and positive
+  ;Clear:Ready for storage
+  SafeOverrideValue=-1
+  ;Actual ArcMode Default setting
+  ATBg_ActArcModeOn=1
+  ATBg_ActArcModeSwi=1
+  ;Definition of Inputs
+  ATI_DefAllInputs()
+  ;Definition of Controler lines 
+  ATA_DefCharacteristics()
+  ;Clear Critical error at unselect of program or new selection of program
+  ATO_ClearAllErrorSignals()
+  ;Clear Timers
+  ATB_Timer(ATBg_JitterDelayTimer,#LoadAndStop,-ABS(ATEg_InputBypassDelay*1000))
+  ATB_Timer(ATEg_ToggleTimerCtrl,#LoadAndStart,ABS(ATEg_TimeFrame));  ==> Timerflag TRUE
+  ATBg_WeavingEnabled=TRUE
+  IF(ATBg_GhostMode==TRUE)THEN
+    ArcMsgNotify("GhostModeSelected","ATB", ,$PRO_NAME[],10276,Opt_NOVLSTOP_LOG)
+  ENDIF
+;ENDFOLD  
+END ;(ArcInit)
+;*****************************************************************************************
+; Definition befor spline block
+;*****************************************************************************************
+GLOBAL DEF ArcSplineBeforeActions()
+   ATA_ER_BeginMemPoint(TRUE)
+END
+;*****************************************************************************************
+; Definition after spline block
+;*****************************************************************************************
+GLOBAL DEF ArcSplineAfterActions()
+   WAIT FOR (ATAg_ER_BeginMemPoint == FALSE)
+END
+;*****************************************************************************************
+;Definitions of weld speed
+;open ILF at ARC_On and ARC_SWI
+;*****************************************************************************************
+GLOBAL DEF ATB_Definition(WeldSet:IN)
+;FOLD Details
+DECL ATBg_Weld_T WeldSet
+ATBg_BAS_VelDefinition=WeldSet.Velocity * ATBg_DryVelFactor ;Definition for next Fold content
+;ENDFOLD
+END ;(ATB_Definition)
+;*****************************************************************************************
+;Definition of strike params in advance
+;*****************************************************************************************
+GLOBAL DEF ATB_DefineStrikeParams(ArcMode:IN,StartSet:OUT)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL INT ArcMode, iJobMode
+DECL BOOL JobModeLoaded
+DECL ATBg_Start_T StartSet
+DECL Modus_T Mode
+DECL State_T State
+;ENDFOLD
+  ;FOLD Implementation
+  ArcTechDiag("DefineStrikeParams", 0)
+  $LINE_SEL_OK = FALSE
+  ATB_LineSelect = FALSE
+  ATBg_FlagLineSelect = FALSE
+  JobModeLoaded=FALSE
+  IF(ATBg_IsInitialized == FALSE)THEN
+    ;Definitions have to be executed by recognized state of state machine
+    ArcInit()
+    WTC_CP_WeaveInit() 
+    ATBg_IsInitialized = TRUE    
+  ENDIF
+  
+  ARSg_ModErrStrat=FALSE
+  ON_ERROR_PROCEED
+  iJobMode = ATAg_ArcModiCoding[1].JobModeId
+  IF ($ERR.Number > 0) THEN
+    ERR_CLEAR($ERR)
+  ELSE
+    FOR iJobMode=1 TO ATA_MaxNrOfArcModi
+      IF (ATAg_ArcModiCoding[iJobMode].JobModeId==StartSet.JobModeId) THEN
+        ArcMode=iJobMode
+        JobModeLoaded=TRUE
+      ENDIF
+    ENDFOR
+  ENDIF
+   IF (JobModeLoaded == FALSE) THEN 
+     ArcTechDiag("JobModeIdNotFound", 0)
+     IF (ATBg_JobModeShowNotify == FALSE) THEN
+       WAIT SEC 0.2
+	   ATBg_JobModeShowNotify = TRUE
+       ArcMsgNotify("JobModeIdNotFoundUndoLastArcModeChanges","ATB", , ,10322,Opt_NOVLSTOP_LOG)
+    ENDIF
+  ENDIF
+  ATBg_ActArcModeOn=ArcMode
+  ATBg_ActStartSet=StartSet
+  ATO_SetArcMode(ArcMode) ;remove all  other modes here
+  ATA_SetParameters(#ArcOn,ArcMode,StartSet,ATBg_ActWeldSet,ATBg_ActCraterSet);remove all  other set startparam
+  rTime_T0=ABS($ROB_TIMER) ;[1ms] as REAL
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD
+END ;(ATB_DefineStrikeParams)
+;*****************************************************************************************
+;ARC_ON general
+;*****************************************************************************************
+GLOBAL DEF ATB_ArcOnGeneral()
+;FOLD Details;%{PE}
+ATB_SetCircType ( )
+;ENDFOLD
+END ;(ATB_ArcOnGeneral)
+;*****************************************************************************************
+;ARC_SWI general
+;*****************************************************************************************
+GLOBAL DEF ATB_ArcSwiGeneral()
+;FOLD Details;%{PE}
+ATB_SetCircType ( )
+;ENDFOLD
+END ;(ATB_ArcSwiGeneral)
+;*****************************************************************************************
+;ARC_OFF general
+;*****************************************************************************************
+GLOBAL DEF ATB_ArcOffGeneral()
+;FOLD Details;%{PE}
+ATB_SetCircType ( )
+;ENDFOLD
+END ;(ATB_ArcOffGeneral)
+;*****************************************************************************************
+;ARC_ON command
+;*****************************************************************************************
+GLOBAL DEF ATB_ArcOn(ArcMode:IN,StartSet:OUT,StartErrSet:OUT,WeldSet:OUT,WeaveSet:OUT,WeldErrSet:OUT,ArcOnTyp:IN,SeamName[]:IN,BitCodedRobotMark:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL INT ArcMode, iJobMode
+DECL ATBg_Start_T StartSet
+DECL ATBg_S_Err_T StartErrSet
+DECL ATBg_Weld_T WeldSet
+DECL WTCg_WeaveDefinition_T WeaveSet ;OUT: for future development
+DECL ATBg_W_Err_T WeldErrSet 
+DECL ATEg_Restart_T ArcOnTyp 
+DECL BOOL JobModeLoaded
+DECL CHAR SeamName[]
+DECL INT Offset, i
+DECL BOOL bTemp, RepeatArcLinkMsg
+DECL CHAR STRDEST[64]
+DECL ArcState arcStateResult
+DECL INT BitCodedRobotMark, iAnswer
+DECL Modus_T Mode
+DECL State_T State
+;ENDFOLD
+  ;FOLD Implementation
+  ATA_ER_ChkIfSensorActive() ;Check if Sensor is Enable on ErrorRecovery
+  JobModeLoaded = FALSE
+  ATBg_StartErrSet=StartErrSet
+  ATBg_WeldErrSet=WeldErrSet
+  WAIT FOR TRUE
+  ArcTechDiag("ArcOn", 0)
+  ATE_Errorhandler_Init()
+  IF (ATAg_ER_ErrorOnSeam==FALSE) THEN
+   $OV_APPL = 100.0
+  ENDIF
+  IF (rTime_T0>0) THEN
+    OptimizePreDelayOfJob()
+  ELSE     
+    ;Settings of ignitions because Trigger was too late
+    ArcInit()
+    WTC_CP_WeaveInit() 
+    ON_ERROR_PROCEED
+    iJobMode = ATAg_ArcModiCoding[1].JobModeId
+    IF ($ERR.Number > 0) THEN
+      ERR_CLEAR($ERR)
+    ELSE
+      FOR iJobMode=1 TO ATA_MaxNrOfArcModi
+        IF (ATAg_ArcModiCoding[iJobMode].JobModeId==StartSet.JobModeId) THEN
+			ArcMode=iJobMode
+			JobModeLoaded = TRUE
+        ENDIF
+      ENDFOR
+    ENDIF
+    IF (JobModeLoaded == FALSE) THEN 
+      ArcTechDiag("JobModeIdNotFound", 0)
+      IF (ATBg_JobModeShowNotify == FALSE) THEN
+        WAIT SEC 0.2
+	    ATBg_JobModeShowNotify = TRUE
+        ArcMsgNotify("JobModeIdNotFoundUndoLastArcModeChanges","ATB", , ,10322,Opt_NOVLSTOP_LOG)
+      ENDIF
+    ENDIF
+    ATBg_ActArcModeOn=ArcMode
+    ATBg_ActStartSet=StartSet
+    ATO_SetArcMode(ATBg_ActArcModeOn) ;remove all other modes here
+    ATA_SetParameters(#ArcOn,ATBg_ActArcModeOn,StartSet,ATBg_ActWeldSet,ATBg_ActCraterSet);remove all  other set startparam
+    WAIT SEC ATB_PreDefinitionTime  ;[s]
+  ENDIF
+  
+  ;Clear delay test
+  rTime_T0=-1.0 ;Delay check cleared
+  
+  ;Diagnostic
+  ATBg_StateDiagCounter=1
+    
+  ON_ERROR_PROCEED
+  iJobMode = ATAg_ArcModiCoding[1].JobModeId
+  IF ($ERR.Number > 0) THEN
+    ERR_CLEAR($ERR)
+  ELSE
+    FOR iJobMode=1 TO ATA_MaxNrOfArcModi
+      IF (ATAg_ArcModiCoding[iJobMode].JobModeId==WeldSet.JobModeId) THEN
+        ArcMode=iJobMode
+      ENDIF
+    ENDFOR
+  ENDIF
+  ;Save Settings
+  ATBg_ActArcModeSwi=ArcMode
+  ATBg_ActStartSet=StartSet
+  ATBg_ActWeldSet=WeldSet
+  WTCg_ActualWeaveSet=WeaveSet  
+  ON_ERROR_PROCEED 
+  ArcSyncList=BitCodedRobotMark
+  IF (($ERR.Number<>0) OR (ArcSyncList < 0)) THEN
+    ArcSyncList = 1
+    ATAg_NumberOfSlaves = 0
+    IF ($ERR.Number<>0) THEN
+      ERR_CLEAR($ERR)
+    ENDIF
+  ELSE
+    IF (ArcSyncList <= 1) THEN
+     ATAg_NumberOfSlaves = 0
+    ENDIF
+    IF ATB_IsSplineActive() THEN
+      SetRemoteCondStopActive()
+    ENDIF
+    DeployErrStrategy(ATBg_StartErrSet, ATBg_WeldErrSet)
+  ENDIF
+  
+  ATBg_DistanceAtArcOn=$DISTANCE
+  ATBg_OnSeam=TRUE
+    
+  IF ATB_IsSplineActive() THEN
+   ATBg_InSplineBlock=TRUE
+  ELSE
+   ATBg_InSplineBlock=FALSE
+  ENDIF
+    
+  WAIT FOR TRUE
+  bTemp=STRCOPY(ATBg_SeamName[],SeamName[])
+  INTERRUPT ON 3
+  ATBg_RestartCondClosed=FALSE
+  
+  ;Definition for next Fold content 
+  ATB_Definition(ATBg_ActWeldSet)   ;ATBg_BAS_VelDefinition=WeldSet.Velocity * ATBg_DryVelFactor
+  
+  RepeatArcLinkMsg=FALSE
+  REPEAT
+   IF (ATBg_PowerSourceType==#ARCLINKXT) THEN
+    IF (ATB_WeldRequest()) THEN
+     IF (ATBg_ModeOpChanged==TRUE) OR (ATB_ChecksumMsgAndHot==TRUE) THEN
+      ;Message from ArcLink driver
+      IF ISMESSAGESET(41000) THEN
+       IF (ATBg_InSplineBlock==TRUE) OR ($VEL_ACT>0.0) THEN ;$VEL_ACT wegen OnTheFly abfragen
+        BRAKE
+       ENDIF
+       ArcMsgDialog(iAnswer,"ArcLinkDifferentChecksum","ATB", ,"SkNo","SkYes",,,,,,TRUE,10312,Opt_VLSTOP_LOG)
+       IF (iAnswer==6) THEN
+        ATB_ChecksumMsgAndHot=FALSE
+        ATBg_ModeOpChanged=FALSE
+        RepeatArcLinkMsg=FALSE
+       ENDIF
+       IF (iAnswer==7) THEN
+        HALT
+        RepeatArcLinkMsg=TRUE
+       ENDIF
+      ENDIF
+     ENDIF
+    ENDIF
+   ENDIF
+  UNTIL (RepeatArcLinkMsg==FALSE)
+  
+  ATBg_RealArcOn = FALSE
+  IF ((ATAg_ER_ArcGroupEnabled) AND (ATAg_ER_ErrorOnSeam)) THEN
+   IF (ATAg_ErrorCounter > 0) THEN
+    IF (ATAg_ErrorDistances[ATAg_ErrorCounter]==0) THEN
+     ATBg_RealArcOn = TRUE
+     ATA_Restart()
+     StartIgnition()
+    ELSE
+      ATA_HandleSeamErrorOn()	
+      IF ATB_IsSplineActive() THEN
+        ATBg_CurrentState=ATBg_SplOnCondition
+      ENDIF
+    ENDIF
+   ENDIF
+  ELSE
+   ATBg_ColdSeam = FALSE
+   ATBg_RealArcOn = TRUE
+   ATBg_IgnErrorCounter = 0 ;Only at real ARC_ON (Counter for IgnitionErrorStrategies)
+   ATBg_SeamFailureCounter = 0 ;Only at real ARC_ON (Counter for SeamErrors)
+   StartIgnition()
+  ENDIF
+  ATBg_RealArcOn = FALSE
+
+  ATBg_ArcSwiTriggered = NOT(ATBg_ArcSwiTriggered)
+  ATBg_PreArrangedVelocity=ATBg_ActWeldSet.Velocity
+;ENDFOLD 
+;ENDFOLD  
+END ;(ATB_ArcOn)
+;*****************************************************************************************
+;ARC_SWI command
+;*****************************************************************************************
+GLOBAL DEF ATB_ArcSwiTrigUP(ArcMode:IN,WeldSet:OUT,WeaveSet:OUT,WeldErrSet:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL INT ArcMode, iJobMode
+DECL ATBg_Weld_T WeldSet
+DECL WTCg_WeaveDefinition_T WeaveSet ;OUT: for future development
+DECL ATBg_W_Err_T WeldErrSet
+  ;ENDFOLD
+  ;FOLD Implementation
+  ArcTechDiag("ArcSwi", 0)
+  ATBg_OnSeam=TRUE
+  WTCg_ActualWeaveSet=WeaveSet
+  IF ATB_IsSplineActive() THEN
+    ATBg_InSplineBlock=TRUE
+  ELSE
+    ATBg_InSplineBlock=FALSE
+    IF ((ATBg_OnlineOptActive==TRUE)AND(ATBg_DisableOnlineOpt==FALSE)AND(ATBg_SensorActive==FALSE)) THEN
+      WTCg_SwitchMechWeaving(#OnInMainTask)
+    ENDIF
+  ENDIF
+
+  ON_ERROR_PROCEED
+  iJobMode = ATAg_ArcModiCoding[1].JobModeId
+  IF ($ERR.Number > 0) THEN
+    ERR_CLEAR($ERR)
+  ELSE
+    FOR iJobMode=1 TO ATA_MaxNrOfArcModi
+      IF (ATAg_ArcModiCoding[iJobMode].JobModeId==WeldSet.JobModeId) THEN
+        ArcMode=iJobMode
+      ENDIF
+    ENDFOR
+  ENDIF
+  IF ATBg_DontSwitch == FALSE THEN
+   ATBg_ActArcModeSwi=ArcMode
+   ATBg_ActWeldSet=WeldSet
+   ATO_SetArcMode(ArcMode)
+   ATA_SetParameters(#ArcSwi,ArcMode,ATBg_ActStartSet,WeldSet,ATBg_ActCraterSet)
+  ENDIF
+  ;ATBg_WeldErrSet=SetSwiErrStrategy(WeldErrSet)
+  ;Force weld speed after block coincidence and safe original override when necessary
+  ForceRealWeldSpeedIfHot()
+  ATBg_ArcSwiTriggered = NOT(ATBg_ArcSwiTriggered)
+  ATBg_PreArrangedVelocity=ATBg_ActWeldSet.Velocity
+  ;ENDFOLD
+;ENDFOLD
+END ;(ATB_ArcSwiTrigUP)
+;*****************************************************************************************
+;ARC_OFF command
+;*****************************************************************************************
+GLOBAL DEF ATB_ArcOff(ArcMode:IN,CraterSet:OUT)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL INT ArcMode, iJobMode
+DECL ArcState arcStateResult
+DECL ATBg_Crater_T CraterSet
+;ENDFOLD
+  ;FOLD Implementation
+  ATBg_ActCraterSet=CraterSet
+  WAIT FOR TRUE
+  ATBg_OnSeam=FALSE
+  ArcTechDiag("ArcOff", 0)
+  ON_ERROR_PROCEED
+  iJobMode = ATAg_ArcModiCoding[1].JobModeId
+  IF ($ERR.Number > 0) THEN
+    ERR_CLEAR($ERR)
+  ELSE
+    FOR iJobMode=1 TO ATA_MaxNrOfArcModi
+      IF (ATAg_ArcModiCoding[iJobMode].JobModeId==CraterSet.JobModeId) THEN
+        ArcMode=iJobMode
+      ENDIF
+    ENDFOR
+  ENDIF
+  ATO_SetArcMode(ArcMode)
+  ATA_SetParameters(#ArcOff,ArcMode,ATBg_ActStartSet,ATBg_ActWeldSet,CraterSet)
+  
+  ;Modification for ArcSense Roboteam Slave LK Base
+  ;IF ATB_IsSplineActive() THEN
+  IF ATBg_InSplineBlock==TRUE THEN
+   SetRemoteCondStopActive()
+  ENDIF
+  arcStateResult = SetArcState(#StopWelding)
+  IF (arcStateResult == #WeldingDone) AND ($PRO_MODE1 <> #GO) AND (ATBg_StatusKey_Hot==FALSE) THEN
+   ;For Spline Start minus Cond. Stop
+   ATBg_CurrentState = #Welding
+  ENDIF   
+  
+  ;Switch off weaving  
+  WTCg_SwitchMechWeaving(#OffInMainTask)
+  
+  ;Clear ArcOff error signals
+  ATOg_SetIO_Group(ATOg_ClearErrorArcOff[],#AdvanceStop)
+  ATI_BurnFreeIfNeeded() ;(ATB_ArcOff)
+  RestoreOverride()
+  
+  IF (ATBg_ColdSeam == TRUE) AND ((ATAg_NoErrorUntilSeamEnd == FALSE) OR (ATBg_WeldErrSet.WeldErrReaction == #ContinueWithoutRetry)) THEN
+    IF (ATAg_ER_ArcGroupEnabled == FALSE) THEN
+      ATOg_SetOneSignal(ATOg_CriticalSeamError,#SetIO)
+      ArcMsgQuit("DoneColdSeam","ATB", ,ATBg_SeamName[],10237,Opt_VLSTOP_LOG)
+      ATOg_SetOneSignal(ATOg_CriticalSeamError,#ResetIO)
+    ENDIF
+  ENDIF
+
+  ATBg_RestartCondClosed=FALSE
+  ATBg_BurnFreeActive=FALSE
+  
+  IF (ATBg_WeldErrSet.WeldErrReaction <> #ContinueWithoutRetry) THEN
+   IF (ATAg_ER_ErrorOnSeam == FALSE) THEN
+    IF (ATBg_InSplineBlock == TRUE) THEN
+     ;NoErrorUntilSeamEnd Spline
+     INTERRUPT OFF ATEg_ErrPeriphery_ISR_Nr
+     INTERRUPT OFF ATEg_ErrRestart_ISR_Nr
+     ATBg_OnSeam=TRUE ;Necessary for restart
+     ATA_HandleInputError()
+    ENDIF
+   ENDIF
+   ATA_HandleSeamErrorOff()
+  ENDIF
+  
+  IF (ATAg_NoErrorUntilSeamEnd == FALSE) OR (ATBg_InSplineBlock == FALSE) THEN
+   ATBg_InSplineBlock = FALSE
+   INTERRUPT OFF ATEg_ErrPeriphery_ISR_Nr
+   INTERRUPT OFF ATEg_ErrRestart_ISR_Nr
+   INTERRUPT OFF ATEg_OnlineOpt_ISR_Nr
+  ENDIF
+  
+  ATO_ClearChannels()
+  ATB_ResetCircType()
+;ENDFOLD
+;ENDFOLD
+END ;(ATB_ArcOff)
+;*****************************************************************************************
+;Save override value for arc motion
+;*****************************************************************************************
+GLOBAL DEF SafeOverride()
+;FOLD Details
+  IF(SafeOverrideValue==(-1))THEN
+    SafeOverrideValue=$OV_PRO
+  ENDIF
+;ENDFOLD
+END ;(SafeOverride)
+;*****************************************************************************************
+;Restore override value for none arc motion
+;*****************************************************************************************
+DEF RestoreOverride()
+;FOLD Details
+  IF(SafeOverrideValue<>(-1))THEN
+    IF ($OV_PRO<SafeOverrideValue) THEN 
+      ;Keep the lower one
+    ELSE
+      ;Restore the lower one => safety
+      $OV_PRO=SafeOverrideValue
+    ENDIF
+    SafeOverrideValue=(-1); not yet saved
+  ENDIF
+;ENDFOLD
+END ;(RestoreOverride)
+;*****************************************************************************************
+;Forces override to 100 % when welding hot
+;cold arc motions without enfluence 
+;conditions defined for one robot alone
+;Actual no additional option defined
+;*****************************************************************************************
+GLOBAL DEF ForceRealWeldSpeedIfHot()
+;FOLD Details
+  SafeOverride()
+  ;Force override==100 only at hot process
+  IF (ATBg_StatusKey_Hot==TRUE) THEN
+    IF($OV_PRO<>100)THEN
+      $OV_PRO=100 ;For welding and weaving at original speed
+    ENDIF
+  ENDIF
+;ENDFOLD
+END ;(ForceRealWeldSpeedIfHot)
+;*****************************************************************************************
+;Replacement for KLV StringLib
+;*****************************************************************************************
+GLOBAL DEFFCT INT ATB_RealToString(STRDEST[]:OUT,REAL2TRANSFORM:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL CHAR STRDEST[]
+DECL REAL REAL2TRANSFORM
+DECL STATE_T STATE
+DECL INT Offset
+;ENDFOLD
+  ;FOLD Implementation
+  Offset=0
+  IF STRCLEAR(STRDEST[])THEN
+    IF($ERR.Interpreter==#R_INT)THEN
+      CONTINUE
+      SWRITE(STRDEST[],STATE,Offset,"%f",REAL2TRANSFORM)
+    ELSE
+      SWRITE(STRDEST[],STATE,Offset,"%f",REAL2TRANSFORM)
+    ENDIF
+  ENDIF
+  RETURN(Offset)
+  ;ENDFOLD
+ ;ENDFOLD
+ENDFCT ;(ATB_RealToString)
+;*****************************************************************************************
+;*****************************************************************************************
+GLOBAL DEFFCT INT ATB_IntToString(STRDEST[]:OUT,INT2TRANSFORM:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL CHAR STRDEST[]
+DECL INT INT2TRANSFORM
+DECL STATE_T STATE
+DECL INT Offset
+;ENDFOLD
+  ;FOLD Implementation
+  Offset=0
+  IF STRCLEAR(STRDEST[])THEN
+    IF($ERR.Interpreter==#R_INT)THEN
+      CONTINUE
+      SWRITE(STRDEST[],STATE,Offset,"%d",INT2TRANSFORM)
+    ELSE
+      SWRITE(STRDEST[],STATE,Offset,"%d",INT2TRANSFORM)
+    ENDIF
+  ENDIF
+  RETURN(Offset)
+;ENDFOLD
+;ENDFOLD
+ENDFCT ;(ATB_IntToString)
+;*****************************************************************************************
+;Generates an real welding request
+;depending operation mode and conditions
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATB_WeldRequest()
+;FOLD Details
+DECL BOOL Configured
+DECL BOOL Conditions
+ 
+  Conditions = (ATBg_GhostMode==FALSE)AND($SIMULATED_AXIS ==0)AND(ATBg_IgnitionFailed==FALSE)AND(ATBg_ColdSeam==FALSE)AND(ATBg_RestartCondClosed==FALSE)
+  Configured=FALSE
+  
+  IF (($MODE_OP==#EX) OR ($MODE_OP==#AUT)) THEN
+    IF (ATB_SingleInpConfigured(ATIg_KeySwitchProcess)==TRUE) THEN
+      Configured=TRUE
+      ATBg_Hot_Weld=((Conditions==TRUE) AND ATI_GetInput(ATIg_KeySwitchProcess))
+    ENDIF
+  ENDIF
+
+  ;Only Statuskey relevant or unconfigured or  test modes
+  IF (($MODE_OP==#T1) OR ($MODE_OP==#T2) OR (Configured==FALSE)) THEN    
+    ATBg_Hot_Weld=((Conditions==TRUE)AND(ATBg_StatusKey_Hot==TRUE))
+  ENDIF
+
+  RETURN(ATBg_Hot_Weld)
+;ENDFOLD
+ENDFCT ;(ATB_WeldRequest)
+;*****************************************************************************************
+;Check if Hot or Cold Seam
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATB_IsHot()
+;FOLD Details
+DECL BOOL Configured
+DECL BOOL Conditions
+ 
+  Conditions = (ATBg_GhostMode==FALSE) AND ($SIMULATED_AXIS==0)
+  Configured=FALSE
+  
+  IF (($MODE_OP==#EX) OR ($MODE_OP==#AUT)) THEN
+    IF (ATB_SingleInpConfigured(ATIg_KeySwitchProcess)==TRUE) THEN
+      Configured=TRUE
+      ATBg_Hot_Weld=((Conditions==TRUE) AND ATI_GetInput(ATIg_KeySwitchProcess))
+    ENDIF
+  ENDIF
+
+  ;Only Statuskey relevant or unconfigured or  test modes
+  IF (($MODE_OP==#T1) OR ($MODE_OP==#T2) OR (Configured==FALSE)) THEN    
+    ATBg_Hot_Weld=((Conditions==TRUE)AND(ATBg_StatusKey_Hot==TRUE))
+  ENDIF
+
+  RETURN(ATBg_Hot_Weld)
+;ENDFOLD
+ENDFCT ;(ATB_IsHot)
+;*****************************************************************************************
+;Avoids also configurations like 1025,1026
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATB_SingleInpConfigured(CfgInput:IN)
+;FOLD Details
+DECL ATIg_Group_IN_T CfgInput
+DECL INT Local_Index
+
+  Local_Index=ABS(CfgInput.Index)
+  IF (Local_Index>0) THEN
+    IF ((ATIg_IN[Local_Index].InNr>0)AND(ATIg_IN[Local_Index].InNr<>1025)AND(ATIg_IN[Local_Index].InNr<>1026)) THEN
+      RETURN(TRUE)
+    ELSE
+      RETURN(FALSE)    
+    ENDIF
+  ELSE
+    RETURN(FALSE)
+  ENDIF
+;ENDFOLD
+ENDFCT ;(ATB_SingleInpConfigured)
+;*****************************************************************************************
+;Is Movement a Spline Movement
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATB_IsSplineActive()
+;FOLD Details
+  SWITCH $MOVE_STATE
+    CASE #PTP_SINGLE,#PTP_AP01,#PTP_AP02,#LIN_SINGLE,#LIN_AP01,#LIN_AP02,#CIRC_SINGLE,#CIRC_AP01,#CIRC_AP02,#SPLINE_PTP,#SPLINE_UES_PTP
+      RETURN FALSE
+    CASE #SPLINE_LIN,#SPLINE_CIRC,#SPLINE_SPL,#SPLINE_UES
+      RETURN TRUE
+    DEFAULT
+      ArcMsgNotify("NoValidMoveState","ATB",,,10268,Opt_NOVLSTOP_LOG)
+      RETURN FALSE
+   ENDSWITCH
+;ENDFOLD
+ENDFCT ;(IsSplineActive)
+;*****************************************************************************************
+;Check if robot ready for welding
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL RobotReadyForWeld()
+DECL INT  OverrideValueTemp
+;FOLD Details
+  ATBg_RoboterErrorBits='B00000000'
+  ;Pro_Mode1
+  IF($PRO_MODE1<>#GO)THEN
+    ATBg_RoboterErrorBits = ATBg_RoboterErrorBits B_OR 'B00000001'
+  ENDIF
+
+  IF($ON_PATH<>TRUE)THEN
+    ;Not always correct: ATBg_RoboterErrorBits = ATBg_RoboterErrorBits B_OR 'B00000010'
+  ENDIF
+
+  IF($MOVE_BCO==FALSE)THEN ;Programmed path reached 
+    ;Not always correct: ATBg_RoboterErrorBits = ATBg_RoboterErrorBits B_OR 'B00000100'
+  ENDIF
+  ;Submit is not running
+  IF($PROG_INFO[2].P_State<>#P_ACTIVE)THEN
+    ATBg_RoboterErrorBits = ATBg_RoboterErrorBits B_OR 'B00001000'
+  ENDIF
+  ;T1 Mode
+  IF($MODE_OP==#T1)THEN
+    IF(ATBg_WeldingInT1Mode==TRUE)THEN
+      ;Speed in T1 same like T2 up to allowed limitation depends upon specified regulations
+      IF($RED_T1_OV_CP==TRUE)THEN
+        ATBg_RoboterErrorBits = ATBg_RoboterErrorBits B_OR 'B000010000'
+      ENDIF
+    ELSE ;Welding in #T1 not allowed
+      ATBg_RoboterErrorBits = ATBg_RoboterErrorBits B_OR 'B000010000'
+    ENDIF   
+  ENDIF
+  ;Additional check necessary: ~ Limited velocity in #T2 (system message 149) Loop: reasons of safety
+  OverrideValueTemp=$OV_PRO
+  IF ($MODE_OP==#T2) THEN
+    REPEAT 
+      IF (IsMessageSet(149)==TRUE) THEN
+        ArcMsgQuit("ManualAccessToOverrideNecessary","ATB", ,ATBg_SeamName[],10290,Opt_VLSTOP_LOG)  
+      ENDIF
+    UNTIL ((($OV_PRO<>OverrideValueTemp) AND ($MODE_OP==#T2)) OR ($MODE_OP<>#T2) OR (IsMessageSet(149)==FALSE))
+  ENDIF
+  ;Simulated robot
+  IF ($SIMULATED_AXIS<>0) THEN
+    ATBg_RoboterErrorBits = (ATBg_RoboterErrorBits B_OR 'B001000000')
+  ENDIF
+  
+  RETURN(ATBg_RoboterErrorBits==0)
+;ENDFOLD
+ENDFCT ;(RobotReadyForWeld)
+;*****************************************************************************************
+;Set CircType
+;*****************************************************************************************
+DEF ATB_SetCircType()
+  DECL CIRC_TYPE CIRC_CHECK
+  IF (ATBg_CircTypeSetEnable == TRUE) THEN
+   ON_ERROR_PROCEED
+   CIRC_CHECK = LDAT_ACT.CIRC_TYP
+   IF ($ERR.NUMBER == 0) THEN
+     IF ($CIRC_TYPE <> LDAT_ACT.CIRC_TYP) THEN
+      bCircTypeChanged = TRUE
+      SavedCircType = $CIRC_TYPE
+      $CIRC_TYPE = LDAT_ACT.CIRC_TYP
+     ENDIF
+   ELSE
+     ;$CIRC_TYPE=DEF_CIRC_TYP
+     ERR_CLEAR($ERR)
+   ENDIF
+  ENDIF
+END ; (ATB_SetCircType)
+;*****************************************************************************************
+;Reset CircType
+;*****************************************************************************************
+DEF ATB_ResetCircType()
+ IF (ATBg_CircTypeSetEnable == TRUE) THEN
+  IF (bCircTypeChanged == TRUE) THEN
+   bCircTypeChanged = FALSE
+   $CIRC_TYPE=SavedCircType
+  ENDIF
+ ENDIF
+END ; (ATB_ResetCircType)
+;FOLD Set of Message routines
+;XXXXXXXXXXXXXXXXXXXXXXXXXXXX
+;*****************************************************************************************
+;Messages of missing robot conditions
+;1:n message has to be acknowledged
+;*****************************************************************************************
+GLOBAL DEF MessagesRobotNotRdyToWld()  ;ok evt. Message auf Mada beziehen
+;FOLD Details;%{PE}
+  ;FOLD Declaration
+;ENDFOLD
+  ;FOLD Implementation
+  IF(ATBg_RoboterErrorBits<>0)THEN
+    IF((ATBg_RoboterErrorBits B_AND 'B00000001') == 'B00000001')THEN
+      ArcMsgQuit("WrongProMode","ATB",,ATBg_SeamName[],10203,Opt_VLSTOP_LOG);$PRO_MODE1<>#GO : Always quit cause of review result
+    ENDIF
+
+    IF((ATBg_RoboterErrorBits B_AND 'B00000100') == 'B00000100')THEN
+      ArcMsgQuit("NoMoveBCO","ATB",,ATBg_SeamName[],10205,Opt_VLSTOP_LOG);$MOVE_BCO
+    ENDIF
+  
+    IF((ATBg_RoboterErrorBits B_AND 'B00001000') == 'B00001000')THEN
+      ArcMsgQuit("SPSNotRunning","ATB",,ATBg_SeamName[],10206,Opt_VLSTOP_LOG);Submit not running
+    ENDIF
+    
+    IF((ATBg_RoboterErrorBits B_AND 'B00010000') == 'B00010000')THEN
+      ArcMsgQuit("ProcT1","ATB",,ATBg_SeamName[],10207,Opt_VLSTOP_LOG);No welding in T1 or wrong velocity adjustment $RED_T1_OV_CP has to be FALSE
+    ENDIF
+    
+    IF ((ATBg_RoboterErrorBits B_AND 'B00100000') == 'B00100000') THEN
+      ArcMsgQuit("BackwardActive","ATB",,ATBg_SeamName[],10274,Opt_VLSTOP_LOG);Wrong adjustments for backward configuration files
+    ENDIF    
+
+    IF ((ATBg_RoboterErrorBits B_AND 'B001000000') == 'B001000000') THEN
+      ArcMsgQuit("AxisSimulated","ATB",,ATBg_SeamName[],10209,Opt_VLSTOP_LOG);Simulated axis
+    ENDIF  
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(MessagesRobotNotRdyToWld)
+;*****************************************************************************************
+;Messages of missing peripheral conditions
+;*****************************************************************************************
+GLOBAL DEF ATB_MsgsAtFailConditions(Information:IN,MsgType:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declaration
+DECL ATBg_TypeOfInformation_T Information
+DECL ATBg_Message_Type_T MsgType
+DECL INT Offset, Power, i, GenErrorBit
+DECL CHAR STRDEST[64]
+DECL BOOL bTemp
+;ENDFOLD
+  ;FOLD Implementation
+  
+  Power=1
+  GenErrorBit = 'B00000000'
+  SWITCH Information
+    CASE #SourcePoweredUp
+      GenErrorBit = ATBg_SourceErrorBits
+    CASE #PeripheryRdy
+      GenErrorBit = ATBg_PeripheryErrorBits
+    CASE #ArcProcessRdyToStartMove
+      GenErrorBit = ATBg_StartMoveErrorBits
+    CASE #ArcProcessOver
+      GenErrorBit = ATBg_ArcOffProcErrorBits
+    CASE #ArcSeamControl
+      GenErrorBit = ATBg_WeldMovingErrorBits
+  ENDSWITCH
+  
+  IF(GenErrorBit<>0)THEN
+    FOR i=1 TO 6
+      bTemp = STRCLEAR(STRDEST[]) ;Clear at the begin for every loop
+      IF((GenErrorBit B_AND Power)==Power)THEN
+        SWITCH Information
+          CASE #SourcePoweredUp
+            IF(ATIg_RdyWeldSource[i].Index<>0)THEN
+              Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_RdyWeldSource[i].Index].InNr)
+              Offset = StrAdd(STRDEST[], " ")
+              Offset = StrAdd(STRDEST[], ATIg_IN[ATIg_RdyWeldSource[i].Index].InputName[])
+              Offset = StrAdd(STRDEST[], " : ")
+              Offset = StrAdd(STRDEST[], ATBg_SeamName[])
+              
+              SWITCH MsgType
+                CASE #NONE              
+                CASE #NOTIFY
+                  ArcMsgNotify("WeldingSourceNotReady","ATB", ,STRDEST[],10210,Opt_NOVLSTOP_LOG)              
+                CASE #QUIT
+                  ArcMsgQuit("WeldingSourceNotReady","ATB", ,STRDEST[],10210,Opt_VLSTOP_LOG)
+              ENDSWITCH
+              WAIT SEC 0.048
+            ENDIF
+          CASE #PeripheryRdy
+            IF(ATIg_WeldPeriphery[i].Index<>0)THEN
+              Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_WeldPeriphery[i].Index].InNr)
+              Offset = StrAdd(STRDEST[], " ")
+              Offset = StrAdd(STRDEST[],ATIg_IN[ATIg_WeldPeriphery[i].Index].InputName[])
+              Offset = StrAdd(STRDEST[], " : ")
+              Offset = StrAdd(STRDEST[], ATBg_SeamName[]) 
+
+              SWITCH MsgType
+                CASE #NONE              
+                CASE #NOTIFY
+                  ArcMsgNotify("PeripheryNotReady","ATB", ,STRDEST[],10211,Opt_NOVLSTOP_NOLOG)              
+                CASE #QUIT
+                  ArcMsgQuit("PeripheryNotReady","ATB", ,STRDEST[],10211,Opt_VLSTOP_LOG)
+              ENDSWITCH
+              WAIT SEC 0.048              
+            ENDIF
+          CASE #ArcProcessRdyToStartMove
+            IF(ATIg_WeldStartMove[i].Index<>0)THEN
+              Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_WeldStartMove[i].Index].InNr)
+              Offset = StrAdd(STRDEST[], " ")
+              Offset = StrAdd(STRDEST[], ATIg_IN[ATIg_WeldStartMove[i].Index].InputName[])
+              Offset = StrAdd(STRDEST[], " : ")
+              Offset = StrAdd(STRDEST[], ATBg_SeamName[])
+
+              SWITCH MsgType
+                CASE #NONE              
+                CASE #NOTIFY
+                  ArcMsgNotify("MissingSignalWhileWelding","ATB", ,STRDEST[],10212,Opt_NOVLSTOP_LOG)              
+                CASE #QUIT
+                  ArcMsgQuit("MissingSignalWhileWelding","ATB", ,STRDEST[],10212,Opt_VLSTOP_LOG)
+
+              ENDSWITCH
+              WAIT SEC 0.048              
+            ENDIF
+          CASE #ArcSeamControl
+            IF(ATIg_WeldMoving[i].Index<>0)THEN
+              Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_WeldMoving[i].Index].InNr)
+              Offset = StrAdd(STRDEST[], " ")
+              Offset = StrAdd(STRDEST[], ATIg_IN[ATIg_WeldMoving[i].Index].InputName[])
+              Offset = StrAdd(STRDEST[], " : ")
+              Offset = StrAdd(STRDEST[], ATBg_SeamName[]) 
+              
+              SWITCH MsgType
+                CASE #NONE              
+                CASE #NOTIFY
+                  ArcMsgNotify("ErrorWindowArcInputsWhileWelding","ATB", ,STRDEST[],10213,Opt_NOVLSTOP_NOLOG)              
+                CASE #QUIT
+                  ArcMsgQuit("ErrorWindowArcInputsWhileWelding","ATB", ,STRDEST[],10213,Opt_VLSTOP_LOG)
+              ENDSWITCH
+              WAIT SEC 0.048              
+            ENDIF
+          CASE #ArcProcessOver
+            IF(ATIg_WeldSeamEnd[i].Index<>0)THEN
+              Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_WeldSeamEnd[i].Index].InNr)
+              Offset = StrAdd(STRDEST[], " ")
+              Offset = StrAdd(STRDEST[], ATIg_IN[ATIg_WeldSeamEnd[i].Index].InputName[])
+              Offset = StrAdd(STRDEST[], " : ")
+              Offset = StrAdd(STRDEST[], ATBg_SeamName[]) 
+ 
+              SWITCH MsgType
+                CASE #NONE              
+                CASE #NOTIFY
+                  ArcMsgNotify("NoProcessEnd","ATB", ,STRDEST[],10214,Opt_NOVLSTOP_NOLOG)              
+                CASE #QUIT
+                  ArcMsgQuit("NoProcessEnd","ATB", ,STRDEST[],10214,Opt_VLSTOP_LOG)
+              ENDSWITCH
+              WAIT SEC 0.048              
+            ENDIF
+        ENDSWITCH       
+      ENDIF
+      Power = Power*2
+    ENDFOR
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(ATB_MsgsAtFailConditions)
+;*****************************************************************************************
+; Sends Message as different kind and with seam name
+;*****************************************************************************************
+GLOBAL DEF ATBg_MsgSorter(MdbKey[]:IN,MsgType:IN,MsgNr:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declaration
+DECL CHAR MdbKey[]
+DECL ATBg_Message_Type_T MsgType
+DECL INT MsgNr
+  ;ENDFOLD
+  ;FOLD Implementation
+    SWITCH MsgType
+      CASE #NONE
+      CASE #NOTIFY
+        IF ((MsgNr==10294) OR (MsgNr==10225)) THEN
+          ArcMsgNotify(MdbKey[],"ATB", ,ATBg_SeamName[],MsgNr,Opt_NOVLSTOP_LOG) ;logging
+        ELSE
+          ArcMsgNotify(MdbKey[],"ATB", ,ATBg_SeamName[],MsgNr,Opt_NOVLSTOP_NOLOG) ;no logging
+        ENDIF
+      CASE #QUIT
+        ArcMsgQuit(MdbKey[],"ATB", ,ATBg_SeamName[],MsgNr,Opt_VLSTOP_LOG)  
+    ENDSWITCH
+;ENDFOLD
+
+;ENDFOLD
+END ;(ATBg_MsgSorter)
+;ENDFOLD ;(Set of Message routines)
+;*****************************************************************************************
+;Submit: PLC_INIT:==> To install into Submit
+;*****************************************************************************************
+GLOBAL DEF ATB_PLC_Init()
+;FOLD Details
+  ATO_ClearArcOutputs()
+  ATO_ClearChannels()
+  ATI_DefAllInputs()
+  SafeOverrideValue=-1
+  ClearedOutputFlag=FALSE 
+  ;Start condition for history state of wirefeed status key
+  ATB_HistoryWFD_State=0
+  ;Initialization watchdog
+  ATE_PrepareWatchdogCtrl()
+  ;clear local copy of line select information
+  ATB_LineSelect=FALSE
+  ATBg_FlagLineSelect=FALSE
+  ATBg_IsInitialized = FALSE
+  WTC_PLC_Init()
+  ;Restart flags enabled
+  ATBg_RestartCondClosed = FALSE
+  ;Clear Flying gas info
+  ATBg_FlyingGasActive=FALSE
+  ATBg_FlyingGasStopped=FALSE
+  rTime_T0=-1.0 ;Delay check cleared
+  ;Clear all error signals including welding machine
+  ATOg_SetIO_Group(ATOg_ReceiptError[],#AdvanceStop)
+  ;Clear online optimize trigger
+  ATBg_OnlineOptRequest=FALSE
+  ;FOLD Collision Device
+  CollDeviceConfiguration()
+  ClearCollisionDeviceFlag()  
+  ;Definition of submit interrupt collission device
+  DeclCollisionDeviceInt()
+  ;ENDFOLD 
+  ;FOLD TOOL DIRECTION
+  ATBg_KSSToolDirection=$TOOL_DIRECTION
+  CheckToolDirection()
+  $OV_APPL = 100.0
+  ;ENDFOLD
+  CheckStrategyConfig()
+  CheckJobModeID()
+;ENDFOLD
+END ;(ATB_PLC_Init)
+;*****************************************************************************************
+;Submit: PLC_LOOP:==> To install into Submit
+;*****************************************************************************************
+GLOBAL DEF ATB_PLC_Loop()
+;FOLD Details
+DECL BOOL bRes
+DECL Modus_T Mode
+DECL State_T State
+DECL ArcState resultState
+
+  SWITCH $PRO_STATE1 
+    
+    CASE #P_STOP
+
+      ATB_FlyingGasControl()
+           
+      IF (ATBg_CurrentState<>#Nothing) AND (ATBg_IgnoreError==FALSE) AND (ATBg_ErrorState==#Nothing) THEN 
+       IF (ATBg_StopMessExecuted==FALSE) AND ($PRO_MODE1==#GO) THEN
+        SetErrorState(#TechStop)
+       ENDIF
+       IF (ATBg_StopMessExecuted==TRUE) THEN
+        SetErrorState(#IRStopMess)
+       ENDIF
+      ENDIF
+      
+      IF (ATBg_CurrentState==#Error) THEN
+       ATBg_DefErrFromOtherIR=FALSE
+       ATBg_MyDefErr=FALSE
+       ATEg_CoopError=#Nothing
+      ENDIF
+
+    CASE #P_RESET,#P_FREE
+      ATB_InitVariables()
+      ATBg_ColdSeam=FALSE
+      ATBg_FlagLineSelect=FALSE
+      ATBg_IsInitialized=FALSE
+      ATEg_CoopError=#Nothing
+      bCircTypeChanged=FALSE
+      SavedCircType=DEF_CIRC_TYP
+      
+      IF (ClearedOutputFlag==FALSE)THEN
+        ATO_ClearArcOutputs()
+        ATO_ClearChannels()
+        ClearedOutputFlag=TRUE
+        ATBg_InSplineBlock=FALSE
+        ATBg_OnSeam=FALSE
+      ENDIF
+      
+    CASE #P_ACTIVE
+      ClearedOutputFlag=FALSE
+      ;100 % override at weld process
+      IF (ATBg_CurrentState==#Welding) THEN
+        ForceRealWeldSpeedIfHot()
+      ENDIF
+
+      IF (ATBg_CurrentState<>#Nothing) AND (ATBg_IgnoreError==FALSE) AND (ATBg_ErrorState==#Nothing) THEN
+       IF (ATEg_CoopError==#DefaultError) THEN
+        ATBg_DefErrFromOtherIR=TRUE
+        CWRITE($CMD,State,Mode,"STOP 1")
+        SetErrorState(#DefaultError)
+       ENDIF
+      ENDIF
+
+      IF ((ATEg_RestartEvent==#Nothing) AND (ATBg_RestartCondClosed==FALSE) AND (ATBg_CurrentState==#Error)) THEN
+       IF ((ATBg_MyDefErr==FALSE) AND (ATBg_DefErrFromOtherIR==FALSE)) THEN
+        ATEg_RestartEvent=#StartAfterError
+       ENDIF
+      ENDIF
+
+  ENDSWITCH
+  ;Set Channels Global for AdvMonitoring
+  ATOg_SetChannelsGlobal()
+  ;Line select 
+  LineSelectControl()
+  ;Wire feed control
+  ATB_WirefeedControl()
+  ;GasControl
+  ATB_GasControl()
+  ;PowerSourceControl  
+  ATB_PSQuitControl()
+  ;Stillstand control
+  ATE_MotionForwardControl()
+  ;Watchdog control
+  ATO_WatchDogControl()
+  ;Switch Off by Status key
+  HotStatusKeyControl()
+  ;Switch Dry Mode by Status key
+  DryStatusKeyControl()
+  ;Release stopped robot when collision detected by submit interrupt
+  ReleaseCollisionDevice()  
+  ;UserSingals
+  UserSignalsPLC()  
+  ;ProMode control
+  ATB_ProModeControl()
+  ;ModeOp control
+  ATB_ModeOpControl()
+  ;ArcLink control
+  ATB_ArcLinkControl()
+;ENDFOLD
+END ;(ATB_PLC_Loop)
+;*****************************************************************************************
+;Get information if robot is on seam
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATB_GetActiveWeldState()
+;FOLD Details
+  IF((ATBg_CurrentState==#PrepIgnition)OR(ATBg_CurrentState==#Ignition)OR(ATBg_CurrentState==#WaitArcStable)OR(ATBg_CurrentState==#Welding)OR(ATBg_CurrentState==#StopWelding))THEN
+    RETURN(TRUE)
+  ELSE
+    RETURN(FALSE)
+    ;Cold and welding process not started
+  ENDIF
+;ENDFOLD
+ENDFCT ;(GetActiveWeldState)
+;-----------------
+;Timer Subroutine
+;-----------------
+GLOBAL DEF ATB_Timer(TimerNr:IN,TimerAction:IN,TimerValue:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL INT TimerNr
+DECL ATBg_TimerAction_T TimerAction
+DECL INT TimerValue
+;ENDFOLD
+  ;FOLD Implementation
+  IF(TimerNr>0)THEN
+  
+    SWITCH TimerAction
+      CASE #LoadAndStop
+        $TIMER_STOP[TimerNr]=TRUE
+        $TIMER[TimerNr]=-ABS(TimerValue)
+        
+      CASE #TimerStart
+        $TIMER_STOP[TimerNr]=FALSE
+        
+      CASE #LoadAndStart
+        $TIMER_STOP[TimerNr]=TRUE
+        $TIMER[TimerNr]=-ABS(TimerValue)
+        $TIMER_STOP[TimerNr]=FALSE
+        
+      CASE #TimerStop
+        $TIMER_STOP[TimerNr]=TRUE
+        
+      DEFAULT
+        ArcMsgNotify("InvalidTimerCommand","ATB",,,10243,Opt_NOVLSTOP_NOLOG)
+    ENDSWITCH
+  ELSE
+    ArcMsgNotify("TimerNrIsSetToZeroNoActions","ATB",,,10236,Opt_NOVLSTOP_NOLOG)
+  ENDIF
+;ENDFOLD
+;ENDFOLD 
+END ;(ATB_Timer)
+;*****************************************************************************************
+;  Messages (Notify,quit, kind of message)   
+;  with $IN number                           
+;*****************************************************************************************
+ GLOBAL DEF ATB_Messages(MsgSource:IN, MsgType:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declaration
+DECL ATBg_Message_OUT_T MsgSource  ;#MsgWireFree,#MsgTorchColl,#MsgGasFlow,#MsgWeldProcess
+DECL ATBg_Message_Type_T MsgType   ;#None,#Quit,#NOTIFY
+DECL CHAR STRDEST[40]
+DECL INT Offset
+;ENDFOLD
+  ;FOLD Implementation  
+  IF (MsgType<>#None) THEN
+  
+    SWITCH MsgSource
+    
+      CASE #MsgWireFree
+        Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_WireFreeDetection.Index].InNr)
+        Offset = StrAdd(STRDEST[], " : ")
+        Offset = StrAdd(STRDEST[], ATBg_SeamName[])  
+        ArcMsgQuit("WireHasConnectionToPart","ATB", , STRDEST[],10215,Opt_VLSTOP_LOG)
+        
+      ;CASE #MsgTorchColl
+        ;Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_TorchCollission.Index].InNr)
+        ;Offset = StrAdd(STRDEST[], " : ")
+        ;Offset = StrAdd(STRDEST[], ATBg_SeamName[])     
+        ;ArcMsgQuit("TorchCollission","ATB", , STRDEST[],10216,Opt_VLSTOP_LOG)
+        
+      CASE #MsgNoGasPreFlow
+        Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_GasFlowAvailable.Index].InNr)
+        Offset = StrAdd(STRDEST[], " : ")
+        Offset = StrAdd(STRDEST[], ATBg_SeamName[])  
+        ArcMsgQuit("NoGasFlow","ATB", , STRDEST[],10217,Opt_VLSTOP_LOG)
+        
+      CASE #MsgNoGasPostFlowOver
+        Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_GasFlowAvailable.Index].InNr)
+        Offset = StrAdd(STRDEST[], " : ")
+        Offset = StrAdd(STRDEST[], ATBg_SeamName[])  
+        ArcMsgQuit("NoGasFlowOver","ATB", , STRDEST[],10218,Opt_VLSTOP_LOG)
+        
+      ;CASE #MsgWeldProcess
+        ;Offset=ATB_IntToString(STRDEST[],ATIg_IN[ATIg_WeldProcessActive.Index].InNr)
+        ;Offset = StrAdd(STRDEST[], " : ")
+        ;Offset = StrAdd(STRDEST[], ATBg_SeamName[])  
+        ;ArcMsgQuit("WeldProcessActive","ATB", , STRDEST[],100219,Opt_VLSTOP_LOG)
+        
+      DEFAULT
+        ArcMsgQuit("UnknownMessageSource","ATB",,ATBg_SeamName[],10220,Opt_VLSTOP_LOG)
+    ENDSWITCH
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;ATB_Messages
+;*****************************************************************************************
+;Wirefeed control by status key
+;start condition set at ATB_PLC_Init
+;*****************************************************************************************
+DEF ATB_WirefeedControl()
+ ;FOLD Details
+  IF ((ATBg_StatusKey_WireFeed<>0) AND ($SAFETY_SW<>#PRESSED))THEN
+   ATBg_StatusKey_WireFeed=0
+  ENDIF
+
+  IF NOT(ATB_HistoryWFD_State==ATBg_StatusKey_WireFeed) THEN
+    IF ATBg_StatusKey_WireFeed==0 THEN
+      ;Stop any direction of wirefeeder
+      ATOg_SetOneSignal(ATOg_WireFeedForward,#ResetIO)
+      ATOg_SetOneSignal(ATOg_WireFeedBackward,#ResetIO)
+    ELSE
+      IF (ATI_GetGroup(ATIg_RdyWeldSource[])==FALSE) THEN
+        ATOg_SetIO_Group(ATOg_ReceiptError[],#AdvanceStop)
+        ArcMsgNotify("NoWireFeederActiveSourceNotReady","ATB",,,10269,Opt_NOVLSTOP_NOLOG)
+      ELSE
+      ;Actions only by state change of wirefeed key
+        SWITCH ATBg_StatusKey_WireFeed
+                
+          CASE 1
+            ;wirefeeder forward independant from state and configuration
+            ATOg_SetOneSignal(ATOg_WireFeedForward,#SetIO)
+          
+          CASE -1
+            ;wirefeeder backward independant from state and configuration
+            ATOg_SetOneSignal(ATOg_WireFeedBackward,#SetIO)
+          
+          DEFAULT
+            ArcMsgNotify("WireFeederWrongCommandByStatusKey","ATB",,,10245,Opt_NOVLSTOP_NOLOG)
+        ENDSWITCH
+      ENDIF
+    ENDIF
+    ATB_HistoryWFD_State=ATBg_StatusKey_WireFeed
+  ENDIF
+;ENDFOLD  
+END ;(ATB_WirefeedControl)
+;*****************************************************************************************
+;Gas control by status key 
+;start condition set at ATB_PLC_Init
+;*****************************************************************************************
+;FOLD General Routine for SoftKeys
+;Routine Dependant on Mode Op 
+DEFFCT BOOL ATB_SK_Condition(tT1 :IN,tT2 :IN,tAUT :IN,tEX :IN)
+DECL BOOL tT1,tT2,tAUT,tEX
+   SWITCH  $MODE_OP
+      CASE #T1
+         RETURN tT1
+      CASE #T2
+         RETURN tT2
+      CASE #AUT
+         RETURN tAUT
+      CASE #EX
+         RETURN tEX
+    ENDSWITCH
+ENDFCT
+;Routine TimeOut
+DEFFCT INT ATB_SK_Tout(tOut :IN)
+DECL REAL tOut
+  tOut=ABS(tOut)
+  IF (tOut>0) THEN
+    RETURN ($ROB_TIMER+(tOut*1000))
+  ELSE
+    RETURN ($ROB_TIMER)
+  ENDIF
+ENDFCT 
+;Routine for Set/Reset Output
+DEF ATB_SK_SRSignal(tG :OUT,tSetReset :IN)
+DECL ATOg_Group_OUT_T tG
+DECL BOOL tSetReset
+   IF (ATB_SK_ConfigOut(tG,TRUE)>=0) THEN
+      IF (tSetReset==TRUE) THEN
+         $OUT[ATOg_Out[tG.Index].OutNr]=tG.State
+      ELSE
+         $OUT[ATOg_Out[tG.Index].OutNr]=ATOg_Out[tG.Index].InitState
+      ENDIF
+   ENDIF
+END
+;Routine if Structure is Confederate 
+DEFFCT INT ATB_SK_ConfigOut(tG :OUT,tCondition :IN)
+DECL ATOg_Group_OUT_T tG
+DECL BOOL tCondition
+   IF(tG.Index>0)THEN
+      IF(ATOg_Out[tG.Index].OutNr>0)THEN
+         IF ($OUT[ATOg_Out[tG.Index].OutNr]) AND (tCondition==TRUE) THEN
+            RETURN 1
+         ELSE
+            RETURN 0
+         ENDIF
+      ELSE
+         RETURN -1 ;Structure Index Output not configured 
+      ENDIF
+   ELSE
+      RETURN -1 ;Structure Index not configured 
+   ENDIF   
+ENDFCT
+DEFFCT INT ATB_SK_ConfigIn(tG :OUT,tCondition :IN)
+DECL ATIg_Group_IN_T tG
+DECL BOOL tCondition
+   IF(tG.Index>0)THEN
+      IF(ATIg_In[tG.Index].InNr>0)THEN
+         IF ($IN[ATIg_In[tG.Index].InNr]) AND (tCondition==TRUE) THEN
+            RETURN 1
+         ELSE
+            RETURN 0
+         ENDIF
+      ELSE
+         RETURN -1 ;Structure Index Output not configured 
+      ENDIF
+   ELSE
+      RETURN -1 ;Structure Index not configured 
+   ENDIF   
+ENDFCT
+;ENDFOLD
+;FOLD SoftKeyGasTest
+DEF ATB_GasControl()
+DECL INT tmpTimeSet
+DECL INT tTimeGasMin
+DECL INT tTimeGasMax
+   tTimeGasMin=1 ;Minimum Time for gas Test
+   tTimeGasMax=20 ;Maximum Time for gas Test
+   IF (ATBg_GasPulseLength<tTimeGasMin) THEN
+      tmpTimeSet=tTimeGasMin
+   ELSE
+      IF (ATBg_GasPulseLength>tTimeGasMax) THEN
+         tmpTimeSet=tTimeGasMax
+      ELSE
+         tmpTimeSet=ATBg_GasPulseLength
+      ENDIF
+   ENDIF
+   ATBg_SK_BtnStatusGas=ATB_SK_ConfigOut(ATOg_GasActive,(($PRO_ACT==FALSE) AND (ATBg_SK_KrlSetGas==TRUE)))
+   IF ATB_SK_Condition($PRO_ACT==FALSE,$PRO_ACT==FALSE,$PRO_ACT==FALSE,FALSE) THEN      
+      IF (ATBg_SK_BtnSetGas==TRUE) THEN;ATBg_SK_BDownGas
+         IF (ATBg_SK_KrlSetGas == FALSE) THEN
+            ATBg_SK_KrlSetGas=TRUE
+            ATB_SK_TimeGasStamp=ATB_SK_Tout(tmpTimeSet)
+         ENDIF
+         ATB_SK_SRSignal(ATOg_GasActive,(ATBg_SK_KrlSetGas) AND ($ROB_TIMER < ATB_SK_TimeGasStamp))
+      ELSE
+         IF (ATBg_SK_KrlSetGas == TRUE) THEN
+            ATBg_SK_KrlSetGas=FALSE
+            ATB_SK_SRSignal(ATOg_GasActive,(ATBg_SK_KrlSetGas))
+         ENDIF
+      ENDIF      
+   ELSE  
+      ATBg_SK_KrlSetGas=FALSE
+   ENDIF
+END ;(ATB_GasControl)
+;ENDFOLD 
+;FOLD SoftKeyQuit 
+DEF ATB_PSQuitControl()
+   ATBg_SK_BtnStatusErrQuit=ATB_SK_ConfigOUT(ATOg_AcknowledgePS,$PRO_ACT==FALSE)
+   ATBg_SK_BtnPSReady=ATB_SK_ConfigIn(ATIg_PowerSourceReady,TRUE)
+   IF ATB_SK_Condition($PRO_ACT==FALSE,$PRO_ACT==FALSE,$PRO_ACT==FALSE,FALSE) THEN 
+      IF (ATBg_SK_BtnSetErrQuit==TRUE) THEN
+	     ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+         IF (ATBg_SK_KrlSetErrQuit == FALSE) THEN
+            ATBg_SK_KrlSetErrQuit=TRUE
+            ATB_SK_SRSignal(ATOg_AcknowledgePS,(ATBg_SK_KrlSetErrQuit))
+         ENDIF
+      ELSE
+         IF (ATBg_SK_KrlSetErrQuit == TRUE) THEN
+            ATBg_SK_KrlSetErrQuit=FALSE
+            ATB_SK_SRSignal(ATOg_AcknowledgePS,(ATBg_SK_KrlSetErrQuit))
+         ENDIF
+         ATBg_SK_KrlSetErrQuit=FALSE
+      ENDIF
+   ELSE  
+      ATBg_SK_KrlSetErrQuit=FALSE    
+   ENDIF
+END ;(ATB_PSQuitControl)
+;ENDFOLD 
+;*****************************************************************************************
+;local copy of line select information
+;$LINE_SEL_OK cleared after one submit loop or 
+;cleared by other ones before: Restore $OV_PRO
+;and switch off weaving as main task
+;*****************************************************************************************
+DEF LineSelectControl()
+ ;FOLD Details
+  IF (ATB_LineSelect==TRUE) THEN
+    ATB_LineSelDelay = ATB_LineSelDelay + 1
+    IF ATB_LineSelDelay >= 1 THEN
+     $LINE_SEL_OK=FALSE ;System variable can be cleared by other ones, but it does not matter
+    ENDIF
+    IF ($ON_PATH==FALSE) THEN
+        RestoreOverride()
+        ATO_ClearArcSpecOuts() ;Clear Special function outputs
+        WTCg_SwitchMechWeaving(#OffByBlockSelect)
+        ATB_LineSelect=FALSE
+        ;Clear critical errors
+        ATO_ClearAllErrorSignals()
+        ;Clear all other kind of errors
+        ATOg_SetIO_Group(ATOg_ReceiptError[],#AdvanceStop) 
+        ATBg_FlagLineSelect=TRUE
+        ATBg_RestartCondClosed=TRUE
+        ATBg_OnSeam=FALSE
+    ENDIF
+  ENDIF
+  
+  IF ($LINE_SEL_OK == TRUE) AND (ATB_LineSelDelaySave >= 5) THEN
+   $LINE_SEL_OK = FALSE
+   ATB_LineSelect = FALSE
+  ENDIF
+   
+  IF ($LINE_SEL_OK==TRUE) THEN
+    ATB_LineSelDelaySave = ATB_LineSelDelaySave + 1
+    ATB_InitVariables()
+    ATBg_IsInitialized = FALSE
+    ATB_LineSelect = TRUE
+    $OV_APPL = 100.0
+  ELSE
+    ATB_LineSelDelay=0
+    ATB_LineSelDelaySave=0
+  ENDIF
+  
+  IF ($ON_PATH==TRUE) AND (ATBg_FlagLineSelect==TRUE) AND ($PRO_STATE1<>#P_RESET) THEN
+   ;SAK Finished
+   ATBg_RestartCondClosed=FALSE
+   ATBg_FlagLineSelect=FALSE
+   ;ATBg_InSplineBlock =FALSE
+   ;ATBg_OnSeam=TRUE
+  ENDIF
+  
+;ENDFOLD
+END ;(LineSelectControl)
+;*****************************************************************************************
+;Initialization of ArcTech Variables
+;*****************************************************************************************
+DEF ATB_InitVariables()
+;FOLD Details
+    ATBg_SaveState=#Nothing
+    ATBg_WeldingActive=FALSE
+    ATBg_BurnFreeActive=FALSE
+    ATBg_BlockArcOff=FALSE
+    ATBg_DefErrFromOtherIR=FALSE
+    ATBg_MyDefErr=FALSE
+    ATBg_FlyingGasStopped=FALSE
+    ATBg_IgnoreError=TRUE
+    ATEg_SimIgnError=FALSE
+    ATEg_SimSeamError=FALSE
+    ATBg_IgnitionError=FALSE
+    ATBg_ErrorState=#Nothing
+    ATEg_RestartEvent=#Nothing
+    ;Because of Spline Cond. Stop
+    IF ($PRO_MODE1==#GO) THEN
+     ATBg_CurrentState=#Nothing
+    ENDIF
+;ENDFOLD
+END;(ATB_InitVariables)
+;*****************************************************************************************
+;Subroutine call by submit
+;Switch Off by Status key HOT / COLD
+;Check if HOT Key is possible
+;*****************************************************************************************
+DEF HotStatusKeyControl()
+;FOLD Details;%{PE}
+  ;FOLD Declaration
+DECL ArcState resultState
+;ENDFOLD
+  ;FOLD Implementation
+  IF ATB_StatKeyHotBuffer<>ATBg_StatusKey_Hot THEN
+   IF ATBg_StatusKey_Hot==TRUE THEN
+    ATB_StatKeyHotRising=TRUE
+   ELSE
+    ATB_StatKeyHotFalling=TRUE
+   ENDIF
+  ENDIF
+  ATB_StatKeyHotBuffer = ATBg_StatusKey_Hot
+  ;Falling Edge StatusKey HOT -> Switch to COLD
+  IF (ATB_GetActiveWeldState()==TRUE) AND (ATB_StatKeyHotFalling==TRUE) THEN
+    IF ($PRO_STATE1==#P_Active) THEN
+     DoSwitchToColdStatKey()
+    ENDIF
+  ENDIF
+  ;Rising Edge Statuskey HOT -> Switch to HOT
+  IF (ATB_StatKeyHotRising==TRUE) AND ($PRO_STATE1<>#P_Active) THEN
+    IF (ATB_GetActiveWeldState()==TRUE) THEN
+     ATEg_RestartEvent=#StartAfterError
+    ENDIF
+  ENDIF
+  IF (ATBg_HotRequest==TRUE)THEN
+
+    ATBg_InfoToSetStsKeyHot=0 ;Clear
+  
+    IF($PRO_MODE1<>#GO)THEN
+      ATBg_InfoToSetStsKeyHot = ATBg_InfoToSetStsKeyHot B_OR 'B00000001'
+      ArcMsgNotify("WrongProModes","ATB",," ?  Statuskey",10244,Opt_NOVLSTOP_LOG);empty string -> compatibility to kxr 
+      WAIT SEC 0.012
+    ENDIF
+    
+    IF($MODE_OP==#T1)THEN
+      IF(ATBg_WeldingInT1Mode==TRUE)THEN
+        ;Speed in T1 same like T2 up to allowed limitation depends upon specified regulations
+        IF($RED_T1_OV_CP==TRUE)THEN
+          ATBg_InfoToSetStsKeyHot = ATBg_InfoToSetStsKeyHot B_OR 'B000010'
+          ArcMsgNotify("RedT1OVCPNotAdjusted","ATB",,": Statuskey",10247,Opt_NOVLSTOP_LOG)
+          WAIT SEC 0.012
+        ENDIF
+      ELSE 
+        ;Welding in #T1 not allowed
+        ATBg_InfoToSetStsKeyHot = ATBg_InfoToSetStsKeyHot B_OR 'B0000100'
+        ArcMsgNotify("WeldinginTest1NotEnabled","ATB",,": Statuskey",10248,Opt_NOVLSTOP_LOG)
+        WAIT SEC 0.012
+      ENDIF 
+    ENDIF
+    
+    ;IF (($BWD_INFO B_AND 'B1001000')<>'B1000') THEN
+    ;  ATBg_InfoToSetStsKeyHot = (ATBg_InfoToSetStsKeyHot B_OR 'B0001000')
+    ;  ArcMsgNotify("BackwardActive","ATB",,": Statuskey",10274,Opt_NOVLSTOP_LOG)
+    ;  WAIT SEC 0.012
+    ;ENDIF
+  
+    IF ($SIMULATED_AXIS<>0) THEN
+      ATBg_InfoToSetStsKeyHot = (ATBg_InfoToSetStsKeyHot B_OR 'B0010000')
+      ArcMsgNotify("AxisSimulated","ATB",,": Statuskey",10209,Opt_NOVLSTOP_LOG)
+      WAIT SEC 0.012
+    ENDIF
+    
+    IF (ATB_GetActiveWeldState()==TRUE) AND (ATBg_StatusKey_Hot == FALSE) AND ($PRO_STATE1 == #P_ACTIVE) THEN
+      ATBg_InfoToSetStsKeyHot = (ATBg_InfoToSetStsKeyHot B_OR 'B0100000')
+      ArcMsgNotify("SwitchOnWeldingNotPossible","ATB", ,ATBg_SeamName[],10270,Opt_NOVLSTOP_LOG)
+      WAIT SEC 0.012
+    ENDIF    
+    ATBg_HotRequest=FALSE ;Data valid as handshake
+  ENDIF
+
+  ATB_StatKeyHotRising = FALSE
+  ATB_StatKeyHotFalling = FALSE
+;ENDFOLD
+;ENDFOLD  
+END ;(HotStatusKeyControl)
+;*****************************************************************************************
+;ProMode Control for Step Motion
+;*****************************************************************************************
+DEF ATB_ProModeControl()
+;FOLD Details
+IF (ATBg_StatusKey_Hot==FALSE) THEN
+ IF ($PRO_MODE1==#GO) THEN
+  ATB_ProModeState=1
+ ELSE
+  ATB_ProModeState=2
+ ENDIF
+ 
+ IF (ATB_ProModeStateBuffer<>ATB_ProModeState) THEN
+  IF (ATB_ProModeState==1) THEN
+   IF (ATBg_OnSeam==TRUE) THEN
+    ATBg_CurrentState=#Error
+   ELSE
+    ATBg_CurrentState=#Nothing
+   ENDIF
+  ENDIF
+  IF (ATB_ProModeState==2) THEN
+   ;Because of Spline Conditional Stop
+   ATBg_CurrentState=#Welding
+  ENDIF
+ ENDIF
+ ATB_ProModeStateBuffer = ATB_ProModeState
+ENDIF
+;ENDFOLD  
+END ;(ATB_ProModeControl)
+;*****************************************************************************************
+;Recognizes if $MODE_OP changed
+;*****************************************************************************************
+DEF ATB_ModeOpControl()
+;FOLD Details
+SWITCH $MODE_OP
+ CASE #T1
+  ATB_ModeOp = 1
+ CASE #T2
+  ATB_ModeOp = 2
+ CASE #AUT
+  ATB_ModeOp = 3
+ CASE #EX
+  ATB_ModeOp = 4
+ DEFAULT
+  ATB_ModeOp = 0
+ENDSWITCH
+
+IF (ATB_ModeOp <> ATB_ModeOpSave) THEN
+ ATBg_ModeOpChanged=TRUE
+ENDIF
+ATB_ModeOpSave = ATB_ModeOp
+;ENDFOLD  
+END ;(ATB_ModeOpControl)
+;*****************************************************************************************
+;ATB_ArcLinkControl
+;*****************************************************************************************
+DEF ATB_ArcLinkControl()
+IF (ATBg_PowerSourceType==#ARCLINKXT) THEN
+ IF (ISMESSAGESET(41000)) THEN
+  IF ATB_IsHot() THEN
+   ATB_ChecksumMsgSet = TRUE
+  ELSE
+   ATB_ChecksumMsgSet = FALSE
+  ENDIF
+ ENDIF
+ 
+ IF (ATB_ChecksumMsgSet <> ATB_ChecksumMsgSave) AND (ATB_ChecksumMsgSet == TRUE) THEN
+  ATB_ChecksumMsgAndHot = TRUE
+ ENDIF
+ 
+ IF (ATB_ChecksumMsgSet <> ATB_ChecksumMsgSave) AND (ATB_ChecksumMsgSet == FALSE) THEN
+  ATB_ChecksumMsgAndHot = FALSE
+ ENDIF
+
+ ATB_ChecksumMsgSave = ATB_ChecksumMsgSet
+ENDIF
+END ;(ATB_ArcLinkControl)
+;*****************************************************************************************
+;Switch Dry Mode by Status key 
+; Stop Weaving
+; Move Faster
+;*****************************************************************************************
+DEF DryStatusKeyControl()
+ ;FOLD Details
+  IF (ATAg_ER_ErrorOnSeam==FALSE) THEN
+   IF (ATBg_DryRun==TRUE) THEN
+     ATBg_DryVelFactor = 2
+   ELSE
+     ATBg_DryVelFactor = 1
+   ENDIF
+  ENDIF
+  ;ENDFOLD
+END ; (DryStatusKeyControl)
+;=============================
+;FOLD Collision device;%{PE}
+;******************************
+; At right configuration      *
+; ATBg_InputNrCollision <> 0  *
+;******************************
+DEF CollDeviceConfiguration()
+;FOLD Implementation
+  IF (ATBg_CollisionMonitoring==TRUE) THEN
+    ;FOLD Check input configuration  
+    IF (ATIg_CollisionMonitoring.Index <>0) THEN
+      IF (ATIg_IN[ATIg_CollisionMonitoring.Index].InNr <>0) THEN
+        ATBg_InputNrCollision=ATIg_IN[ATIg_CollisionMonitoring.Index].InNr
+      ELSE
+        ATBg_InputNrCollision=0
+        ArcMsgNotify("WrongCollisionMonitorInput","ATB", ," ",10278,Opt_VLSTOP_LOG)
+      ENDIF
+    ELSE
+      ATBg_InputNrCollision=0
+      ArcMsgNotify("WrongPointerOfCollisionMonitorInput","ATB", ," ",10279,Opt_VLSTOP_LOG)
+    ENDIF
+    ;ENDFOLD       
+    ;FOLD Calculate output configuration
+      IF (ATOg_CollisionDetect.Index <> 0) THEN
+        IF (ATOg_Out[ATOg_CollisionDetect.Index].OutNr >0) THEN
+          ATBg_OutputNrCollision=ATOg_Out[ATOg_CollisionDetect.Index].OutNr      
+        ENDIF
+      ELSE
+        ATBg_OutputNrCollision=0
+        ArcMsgNotify("WrongPointerOfCollisionMonitorOutput","ATB", ," ",10280,Opt_VLSTOP_LOG)
+      ENDIF
+    ;ENDFOLD 
+  ELSE
+    ArcMsgNotify("CollisionMonitoringInactive","ATB", ," ",10281,Opt_VLSTOP_LOG)
+    ;ATBg_InputNrCollision=0
+  ENDIF
+  ;FOLD Stillstand control
+  IF(ATEg_StillStandOption==FALSE)THEN
+    ArcMsgNotify("StillstandControlInactive","ATB",,,10222,Opt_VLSTOP_LOG)
+  ENDIF
+  ;ENDFOLD
+ ;ENDFOLD ;(Implementation)
+END ;(CollDeviceConfiguration)
+;*****************************************************************************************
+;*****************************************************************************************
+DEF ClearCollisionDeviceFlag()
+
+  IF ((ATBg_OutputNrCollision>0) AND (ATOg_CollisionDetect.PulsTime==0.0))THEN
+    $OUT[ATBg_OutputNrCollision]= NOT(ATOg_CollisionDetect.State)
+  ENDIF
+  bCollisionDetected=FALSE
+  bRelieveMsgSent=FALSE
+  bFreeMoveActivated=FALSE
+END
+;*****************************************************************************************
+;*****************************************************************************************
+DEF DeclCollisionDeviceInt()
+;FOLD Definition of Submit interrupt for collision
+  IF (ATBg_CollisionMonitoring==TRUE) THEN
+    IF (ATBg_InputNrCollision>0) THEN
+      ;Default: SUBMIT_ISR Nr 4
+      IF (ATIg_CollisionMonitoring.State==TRUE) THEN
+        GLOBAL INTERRUPT DECL ATBg_CollisionSubmIntNr WHEN $IN[ATBg_InputNrCollision]==TRUE DO CollisionSubmitInterrupt()
+      ELSE
+        GLOBAL INTERRUPT DECL ATBg_CollisionSubmIntNr WHEN $IN[ATBg_InputNrCollision]==FALSE DO CollisionSubmitInterrupt()
+      ENDIF
+      INTERRUPT ON ATBg_CollisionSubmIntNr   
+    ENDIF
+  ENDIF
+;ENDFOLD
+END ;(DeclCollisionDeviceInt)
+;*****************************************************************************************
+;Recognizes touch & send messages
+;once as submit interrupt task
+;*****************************************************************************************
+DEF CollisionSubmitInterrupt()
+;FOLD Details
+  IF (ATBg_CollisionMonitoring==TRUE) THEN
+    IF NOT(bCollisionDetected)THEN
+      IF (ATBg_InputNrCollision>0) THEN
+       ; bTemp=ROB_STOP(#PATH_MAINTAINING) ;=> $STOPMESS_Flag becomes active
+        IF (ROB_STOP(#PATH_MAINTAINING)==TRUE) THEN
+          bCollisionDetected=TRUE        
+          ATOg_SetOneSignal(ATOg_CollisionDetect,#SetIO)               
+          ArcMsgState(iCollisionStateMsgHandle,"CrashRecognizedRelieveTaskNeeded","ATB",,, 10282,Opt_VLSTOP_LOG)
+          ;Dialog message MoveFree
+          Dlg_msg = {modul[] "ATB", Nr 10286, msg_txt[] "MoveFreeDialogMsg"}
+          Dlg_SK[1] = {sk_Type #key, sk_txt[] "MoveFree"}
+          iDlg_keynumber=-1
+          iDlg_nHandle=0
+          iDlg_nHandle = Set_KrlDlg (Dlg_msg, Dlg_par[], Dlg_SK[], Dlg_opt)
+        ENDIF
+      ENDIF          
+    ENDIF
+  ENDIF
+;ENDFOLD
+END ;(CollisionSubmitInterrupt)
+;*****************************************************************************************
+;*****************************************************************************************
+DEF ReleaseCollisionDevice()
+;FOLD Details
+DECL BOOL bTemp
+DECL Modus_T Mode
+DECL State_T State
+
+;Check Collistion after Submit start or after Controler reboot
+IF bCollisionDetected==FALSE THEN
+ IF (ATIg_CollisionMonitoring.State==TRUE) THEN
+  IF (ATBg_InputNrCollision>0) THEN
+    IF $IN[ATBg_InputNrCollision]==TRUE THEN
+     BufferCounter=BufferCounter+1
+     IF BufferCounter>10 THEN
+      CollisionSubmitInterrupt()
+      BufferCounter=0
+     ENDIF
+    ENDIF
+  ENDIF
+ ELSE
+  IF (ATBg_InputNrCollision>0) THEN
+    IF $IN[ATBg_InputNrCollision]==FALSE THEN
+     BufferCounter=BufferCounter+1
+     IF BufferCounter>10 THEN
+      CollisionSubmitInterrupt()
+      BufferCounter=0
+     ENDIF
+    ENDIF
+  ENDIF
+ ENDIF
+ELSE
+ BufferCounter=0
+ENDIF
+
+IF BufferCounter>100 THEN
+ BufferCounter=100
+ENDIF
+
+;Clear Messages when Option Collisiont Monitoring set to false
+IF ATBg_CollisionMonitoring==FALSE THEN
+ IF (iCollisionStateMsgHandle<>0) THEN
+  bTemp=Clear_KrlMsg(iCollisionStateMsgHandle) ;bTemp=True at success
+  ROB_STOP_RELEASE()
+  iCollisionStateMsgHandle=0
+  ClearCollisionDeviceFlag()
+ ENDIF
+ IF iCollisionDlgMsgHandle<>0 THEN
+  bTemp=Clear_KrlMsg(iCollisionDlgMsgHandle) ;bTemp=True at success
+  iCollisionDlgMsgHandle=0
+  ClearCollisionDeviceFlag()
+ ENDIF
+ENDIF
+   
+IF ((ATBg_CollisionMonitoring==TRUE) AND (ATBg_InputNrCollision >0)) THEN
+
+  ;Clear when no dollision but dialog message was active
+  IF (bCollisionDetected==FALSE) AND (iCollisionStateMsgHandle>0) THEN
+    bTemp=Clear_KrlMsg(iCollisionStateMsgHandle) ;bTemp=True at success
+    ROB_STOP_RELEASE()
+  ENDIF
+
+  ;Dialog message MoveFree
+  IF (iDlg_nHandle > 0) THEN
+    IF NOT(Exists_KrlDlg(iDlg_nHandle, iDlg_keynumber)) THEN
+      SWITCH iDlg_keynumber
+      CASE 1
+        iDlg_keynumber=-1
+        iDlg_nHandle=0
+        ArcMsgState(iCollisionDlgMsgHandle,"FreeMoveIsActive","ATB",,, 10285,Opt_VLSTOP_LOG)
+        bTemp=Clear_KrlMsg(iCollisionStateMsgHandle) ;bTemp=True at success
+        IF bTemp THEN
+         bFreeMoveActivated=TRUE
+         iCollisionStateMsgHandle=0
+        ENDIF
+      ENDSWITCH
+    ENDIF
+  ENDIF
+    
+    IF (bCollisionDetected==TRUE) AND (bFreeMoveActivated==TRUE) THEN
+      IF NOT(bRelieveMsgSent) THEN
+        IF $OV_JOG>OverrideAfterCollission THEN
+         $OV_JOG=OverrideAfterCollission ;Default=10
+        ENDIF
+        ;Robot allowed to move
+        ROB_STOP_RELEASE()
+        bRelieveMsgSent=TRUE
+      ENDIF
+      
+      ;No Program Movement allowed
+      IF ($PRO_ACT==TRUE) THEN
+       IF (bCollNotifyMsgFired==FALSE) THEN
+        ArcMsgNotify("NoProgramMovingAllowed","ATB",,,10283,Opt_NOVLSTOP_LOG)
+        bCollNotifyMsgFired=TRUE
+        CWRITE($CMD,State,Mode,"STOP 1")  
+       ENDIF
+      ELSE
+       bCollNotifyMsgFired=FALSE
+      ENDIF
+      
+      ;Executed relieve action when successful        
+      IF ($IN[ATBg_InputNrCollision]==NOT(ATIg_CollisionMonitoring.State)) THEN
+        ;state collision message removed
+        IF (iCollisionDlgMsgHandle<>0) THEN
+          bTemp=Clear_KrlMsg(iCollisionDlgMsgHandle) ;bTemp=True at success
+          IF bTemp THEN
+            iCollisionDlgMsgHandle=0
+          ENDIF
+          ArcMsgNotify("RobotIsFreeAagin","ATB",,,10284,Opt_NOVLSTOP_LOG)
+        ENDIF
+        ClearCollisionDeviceFlag()
+      ENDIF       
+    ENDIF
+ENDIF
+;ENDFOLD
+END ;(ReleaseCollisionDevice)
+;ENDFOLD
+;*****************************************************************************************
+;*****************************************************************************************
+DEF OptimizePreDelayOfJob()
+  ;FOLD Implementation
+  IF (ATBg_EnablePreDelayOfJob == TRUE) THEN
+    rTime_T1=ABS($ROB_TIMER) ;[1ms] as REAL
+    rDeltaTime = (rTime_T1-rTime_T0) ;[1ms cyles]
+    rDeltaTimeInSec = ABS(ATBg_PreDefinitionTime/1000.0) - rDeltaTime/1000.0 ; ms => s
+    IF (rDeltaTimeInSec > 0.0) AND (rDeltaTimeInSec<5.0) THEN
+      WAIT SEC rDeltaTimeInSec
+    ELSE
+      ;overflow unsigned 32 Bit recognize
+      IF (rDeltaTimeInSec < -5.0) THEN 
+        WAIT SEC ATB_PreDefinitionTime
+      ENDIF
+    ENDIF
+  ENDIF
+  ;ENDFOLD
+END ;(OptimizePreDelayOfJob)
+;*****************************************************************************************
+;*****************************************************************************************
+DEF CheckToolDirection()
+;FOLD Implementation
+  SWITCH ATBg_ToolDirection
+    CASE #X
+      IF ($Tool_Direction <> #X) THEN
+        ArcMsgNotify("DifferentToolDirectionsConfigured","ATB", ," ",10287,Opt_VLSTOP_LOG)
+      ENDIF
+    CASE #Z
+      IF ($Tool_Direction <> #Z) THEN
+        ArcMsgNotify("DifferentToolDirectionsConfigured","ATB", ," ",10287,Opt_VLSTOP_LOG)
+      ENDIF
+  ENDSWITCH
+;ENDFOLD ;(Implementation)
+END ;(CheckToolDirection)
+;*****************************************************************************************
+;*****************************************************************************************
+DEF CheckStrategyConfig()
+;FOLD Implementation
+  IF ((ATBg_StrategyMaxError==#OnlyBySps) OR (ATBg_StrategyMaxError==#DependingModeOP)) THEN
+    ;FOLD Check input configuration  
+    IF (ATIg_StrategyDecision.Index <>0) THEN
+      IF (ATIg_IN[ATIg_StrategyDecision.Index].InNr <>0) THEN
+      ELSE
+        ArcMsgNotify("WrongStrategyDecisionInput","ATB", ," ",10295,Opt_VLSTOP_LOG)
+      ENDIF
+    ELSE
+      ArcMsgNotify("WrongPointerOfStrategyDecisionInput","ATB", ," ",10296,Opt_VLSTOP_LOG)
+    ENDIF
+    IF (ATIg_DecisionValid.Index <>0) THEN
+      IF (ATIg_IN[ATIg_DecisionValid.Index].InNr <>0) THEN
+      ELSE
+        ArcMsgNotify("WrongStrategyDecisionValidInput","ATB", ," ",10303,Opt_VLSTOP_LOG)
+      ENDIF
+    ELSE
+      ArcMsgNotify("WrongPointerOfStrategyDecisionValidInput","ATB", ," ",10304,Opt_VLSTOP_LOG)
+    ENDIF
+    ;ENDFOLD       
+    ;FOLD Calculate output configuration
+    IF (ATOg_DecisionRequest.Index <> 0) THEN
+      IF (ATOg_Out[ATOg_DecisionRequest.Index].OutNr >0) THEN
+      ELSE
+        ArcMsgNotify("WrongStrategyDecisionOutput","ATB", ," ",10297,Opt_VLSTOP_LOG)
+      ENDIF
+    ELSE
+      ArcMsgNotify("WrongPointerOfStrategyDecisionOutput","ATB", ," ",10298,Opt_VLSTOP_LOG)
+    ENDIF
+    ;ENDFOLD 
+  ENDIF
+ ;ENDFOLD ;(Implementation)
+END ;(CheckStrategyConfig)
+;*****************************************************************************************
+;*****************************************************************************************
+GLOBAL DEFFCT INT PurgeTimeDelay(StartSet:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL INT iPurgeTimeDelay  
+DECL ATBg_Start_T StartSet
+;ENDFOLD
+  ;FOLD Implementation
+  iPurgeTimeDelay = StartSet.PurgeTime * (-1000)
+  RETURN (iPurgeTimeDelay)
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD
+ENDFCT ;(PurgeTimeDelay) 
+;*****************************************************************************************
+;*****************************************************************************************
+DEF CheckJobModeID()
+;FOLD Declaration
+INT iTemp, iIndex
+;ENDFOLD
+;FOLD Implementation
+ATBg_JobModeShowNotify = FALSE
+  FOR iIndex=1 TO ATA_MaxNrOfArcModi
+    IF ATAg_ArcModiCoding[iIndex].InUse THEN
+      ON_ERROR_PROCEED
+      iTemp = ATAg_ArcModiCoding[iIndex].JobModeId
+      IF ($ERR.Number > 0) THEN
+         ArcMsgNotify("ProjectUpdateNecessary","ATB", ," ",10309,OPt_VLSTOP_LOG)
+         ERR_CLEAR($ERR)
+      ELSE
+        IF iTemp==0 THEN
+          ArcMsgNotify("ProjectUpdateNecessary","ATB", ," ",10309,OPt_VLSTOP_LOG)
+        ENDIF
+      ENDIF
+    ENDIF
+  ENDFOR
+;ENDFOLD
+END ;(CheckJobModeID) 
+;*****************************************************************************************
+;*****************************************************************************************
+GLOBAL DEF ATB_FlyingGasControl()
+  IF (ATBg_FlyingGasActive==TRUE) THEN
+    ATBg_FlyingGasStopped=TRUE
+  ENDIF       
+  ATBg_FlyingGasActive=FALSE
+END ;(ATB_FlyingGasControl)
+;*****************************************************************************************
+;[ROUTINE]  ATig_IN_Max Update Maximum array number
+;*****************************************************************************************
+GLOBAL DEFFCT INT ATIg_IN_Max()
+DECL INT tI,tMaxInput
+tMaxInput = 0
+FOR tI = 1 TO 30
+  ON_ERROR_PROCEED
+  ATIg_IN[tI] = ATIg_IN[tI]
+  IF ($ERR.NUMBER == 0) THEN
+    tMaxInput = tMaxInput + 1
+  ELSE
+    ERR_CLEAR($ERR)
+    EXIT
+  ENDIF
+ENDFOR
+RETURN tMaxInput
+ENDFCT

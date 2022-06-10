@@ -1,0 +1,53 @@
+&ACCESS  R
+&COMMENT Datas from WOV
+&PARAM DISKPATH = TP/ArcTechBasic
+&REL 1
+DEFDAT  arcgeneral PUBLIC
+;FOLD Enum and Structures
+GLOBAL ENUM ATBg_ToolDirection_T X,Z
+GLOBAL ENUM ATBg_Message_Type_T NONE,NOTIFY,QUIT
+GLOBAL ENUM ATBg_ErrMotion_T KeepOnPosition,MoveUpAndStop,BackFromStop,MoveBackward,MoveForward,ContinueWithoutRetry,Userdefined,BackToSplineStart
+GLOBAL ENUM ATBg_StrategyInput_T NONE,DependingModeOp,OnlyBySmartPad,OnlyBySps
+GLOBAL ENUM ATBg_ErrorDecision_T NONE,Automatic,DependingModeOp,SmartHMI,PLC
+GLOBAL ENUM ATBg_PowerSourceType_T Standard,ARCLINKXT,FRONIUS_TPSI
+GLOBAL STRUC ATBg_S_Err_T ATBg_Message_Type_T MsgType,REAL RecoveryTime,INT MaxRestart,ATBg_Message_Type_T IgnitionFailureMsgType,INT MaxErrStrategies,ATBg_ErrMotion_T IgnitionReaction,REAL FwdDistance,INT Index
+GLOBAL STRUC ATBg_W_Err_T ATBg_Message_Type_T MsgType,INT MaxBreaksOnSeam,ATBg_ErrMotion_T WeldErrReaction,REAL MotionOnSeam,INT Index
+;ENDFOLD
+;FOLD Arc Adjustments
+DECL GLOBAL BOOL ATBg_WeldingInT1Mode=TRUE
+DECL GLOBAL BOOL ATEg_StrategyAfterTStop=TRUE
+DECL GLOBAL BOOL ATBg_CollisionMonitoring=FALSE
+DECL GLOBAL BOOL ATEg_StillStandOption=TRUE
+DECL GLOBAL REAL ATBg_APODistanceArcTech=5.00000
+DECL GLOBAL REAL ATBg_CurrentTimeout=1.00000
+DECL GLOBAL REAL ATBg_GasFlowTimeout=2.50000
+DECL GLOBAL REAL ATBg_WireFreeTimeout=0.500000
+DECL GLOBAL REAL ATBg_CurrentOverTimeout=2.00000
+DECL GLOBAL REAL ATBg_GasTimeoutOver=1.00000
+DECL GLOBAL REAL ATEg_ZeroVelocity=0.000800000
+DECL GLOBAL REAL ATEg_StillstandTimeout=1.00000
+DECL GLOBAL REAL ATEg_WatchDogTime=1.00000
+DECL GLOBAL REAL ATEg_InputBypassDelay=0.500000
+DECL GLOBAL ATBg_ToolDirection_T ATBg_ToolDirection=#X
+DECL GLOBAL ATBg_StrategyInput_T ATBg_StrategyMaxError=#NONE
+DECL GLOBAL ATBg_ErrorDecision_T ATBg_DecisionType=#NONE
+DECL GLOBAL ATBg_PowerSourceType_T ATBg_PowerSourceType=#Standard
+DECL GLOBAL INT ATBg_AdditionalOptions=0
+;ENDFOLD
+;FOLD Adjustments for global error ignition handling
+DECL GLOBAL ATBg_S_Err_T ATBg_StartErrSetField[1]
+ATBg_StartErrSetField[1]={MsgType #NONE,RecoveryTime 1.00000,MaxRestart 2,IgnitionFailureMsgType #QUIT,MaxErrStrategies 1,IgnitionReaction #KeepOnPosition,FwdDistance 0.0,Index 1}
+;ENDFOLD
+;FOLD Adjustments for global error weld handling
+DECL GLOBAL ATBg_W_Err_T ATBg_WeldErrSetField[1]
+ATBg_WeldErrSetField[1]={MsgType #QUIT,MaxBreaksOnSeam 3,WeldErrReaction #KeepOnPosition,MotionOnSeam 0.0,Index 1}
+;ENDFOLD
+;FOLD Burn Free settings
+DECL GLOBAL BOOL ATBg_BFActive=FALSE
+DECL GLOBAL INT ATBg_BFModeIndex=0
+DECL GLOBAL REAL ATBg_BFIgnTime=0.0
+DECL GLOBAL REAL ATBg_BFPreFlowTime=0.0
+DECL GLOBAL INT ATBg_BFMaxIgn=0
+DECL GLOBAL ATBg_Crater_T AC_WBurn={JobModeId 0,ParamSetId 0,CraterTime 0.0,PostflowTime 0.0,Channel1 0.0,Channel2 0.0,Channel3 0.0,Channel4 0.0,Channel5 0.0,Channel6 0.0,Channel7 0.0,Channel8 0.0,BurnBackTime 0.0}
+;ENDFOLD
+ENDDAT

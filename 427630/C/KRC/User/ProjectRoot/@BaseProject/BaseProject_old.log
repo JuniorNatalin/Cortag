@@ -1,0 +1,9 @@
+18/03/2022 11:14:13.34 [Information] -------------------------------
+18/03/2022 11:14:13.34 [Information] *** Begin Prepare ''!
+18/03/2022 11:14:13.34 [Information] *** Begin prepare project 'BaseProject V1.1.0.0'!
+18/03/2022 11:14:25.27 [Information] *** Start preparation of 'BaseProject' path ''
+18/03/2022 11:14:25.71 [Error] ### Failed to Prepare 'BaseProject V1.1.0.0'! Reason: Error on controller <?P1>: Installation prohibited! Existing project 'BaseProject V1.0.0.0' is pinned!
+18/03/2022 11:14:25.86 [Warning] *** Start Rollback.
+18/03/2022 11:14:25.87 [Information] Restore current project -> 427630_br V1.0.0
+18/03/2022 11:14:25.87 [Warning] *** End Rollback.
+18/03/2022 11:14:25.87 [Information] #----------------o0o---------------#

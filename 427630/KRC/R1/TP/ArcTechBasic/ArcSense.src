@@ -1,0 +1,16 @@
+&ACCESS  R
+&COMMENT ATB ArcSense
+DEF  ArcSense()
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+
+GLOBAL DEF ARS_ReduceWeaveCorr()
+;Nothing
+END
+
+GLOBAL DEF ARS_RequestRestart()
+;Nothing
+END

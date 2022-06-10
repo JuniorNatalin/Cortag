@@ -1,0 +1,12 @@
+&ACCESS  R
+&COMMENT ATB UserArcTechMonitoring
+DEF  UserArcTechMonitoring( )
+  ;******************************
+  ;* Package:     ArcTechBasic  *
+  ;* Release      V1.3          *
+  ;******************************
+END
+GLOBAL DEF UserSignalsPLC()
+ gTestSignal1 = TestSignal1
+ gTestSignal2 = TestSignal2
+END

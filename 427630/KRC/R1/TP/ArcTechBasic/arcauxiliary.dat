@@ -1,0 +1,277 @@
+&ACCESS R
+&COMMENT Datas from WOV
+&REL 1
+DEFDAT ARCAUXILIARY PUBLIC
+;FOLD Enum and Structures
+STRUC ATA_ChannelDef_T REAL Para, Val
+Global STRUC ATAg_ArcModeDef_T CHAR ModusName[24], INT Coding, BOOL InUse, INT JobModeId
+STRUC ATA_ChannelSet_T8 REAL Ch1, Ch2, Ch3, Ch4, Ch5, Ch6, Ch7, Ch8
+;ENDFOLD
+;FOLD Arc Modi Coding
+DECL GLOBAL INT ATA_MaxNrOfArcModi=3
+DECL GLOBAL ATAg_ArcModeDef_T ATAg_ArcModiCoding[3]
+ATAg_ArcModiCoding[1]={Modusname[] "MIG Standard",InUse TRUE,Coding 2,JobModeId -187662529}
+ATAg_ArcModiCoding[2]={Modusname[] "MIG Pulse",InUse TRUE,Coding 3,JobModeId 802820420}
+ATAg_ArcModiCoding[3]={Modusname[] "Job",InUse TRUE,Coding 1,JobModeId 1306102413}
+;ENDFOLD
+;FOLD Data type coding
+DECL BOOL ATA_IsInteger[3,8]
+ATA_IsInteger[1,1]=TRUE
+ATA_IsInteger[1,2]=TRUE
+ATA_IsInteger[1,3]=FALSE
+ATA_IsInteger[1,4]=FALSE
+ATA_IsInteger[1,5]=TRUE
+ATA_IsInteger[1,6]=FALSE
+ATA_IsInteger[1,7]=FALSE
+ATA_IsInteger[1,8]=FALSE
+ATA_IsInteger[2,1]=TRUE
+ATA_IsInteger[2,2]=TRUE
+ATA_IsInteger[2,3]=FALSE
+ATA_IsInteger[2,4]=TRUE
+ATA_IsInteger[2,5]=FALSE
+ATA_IsInteger[2,6]=FALSE
+ATA_IsInteger[2,7]=FALSE
+ATA_IsInteger[2,8]=FALSE
+ATA_IsInteger[3,1]=FALSE
+ATA_IsInteger[3,2]=TRUE
+ATA_IsInteger[3,3]=FALSE
+ATA_IsInteger[3,4]=FALSE
+ATA_IsInteger[3,5]=FALSE
+ATA_IsInteger[3,6]=FALSE
+ATA_IsInteger[3,7]=FALSE
+ATA_IsInteger[3,8]=FALSE
+;ENDFOLD
+;FOLD Channels active configuration
+;FOLD Strike process
+DECL BOOL ATA_ArcOnChannelActive[3,8]
+ATA_ArcOnChannelActive[1,1]=TRUE
+ATA_ArcOnChannelActive[1,2]=TRUE
+ATA_ArcOnChannelActive[1,3]=TRUE
+ATA_ArcOnChannelActive[1,4]=TRUE
+ATA_ArcOnChannelActive[1,5]=FALSE
+ATA_ArcOnChannelActive[1,6]=FALSE
+ATA_ArcOnChannelActive[1,7]=FALSE
+ATA_ArcOnChannelActive[1,8]=FALSE
+ATA_ArcOnChannelActive[2,1]=TRUE
+ATA_ArcOnChannelActive[2,2]=TRUE
+ATA_ArcOnChannelActive[2,3]=TRUE
+ATA_ArcOnChannelActive[2,4]=TRUE
+ATA_ArcOnChannelActive[2,5]=FALSE
+ATA_ArcOnChannelActive[2,6]=FALSE
+ATA_ArcOnChannelActive[2,7]=FALSE
+ATA_ArcOnChannelActive[2,8]=FALSE
+ATA_ArcOnChannelActive[3,1]=FALSE
+ATA_ArcOnChannelActive[3,2]=TRUE
+ATA_ArcOnChannelActive[3,3]=FALSE
+ATA_ArcOnChannelActive[3,4]=FALSE
+ATA_ArcOnChannelActive[3,5]=FALSE
+ATA_ArcOnChannelActive[3,6]=FALSE
+ATA_ArcOnChannelActive[3,7]=FALSE
+ATA_ArcOnChannelActive[3,8]=FALSE
+;ENDFOLD
+;FOLD Welding process
+DECL BOOL ATA_ArcSwiChannelActive[3,8]
+ATA_ArcSwiChannelActive[1,1]=TRUE
+ATA_ArcSwiChannelActive[1,2]=TRUE
+ATA_ArcSwiChannelActive[1,3]=TRUE
+ATA_ArcSwiChannelActive[1,4]=TRUE
+ATA_ArcSwiChannelActive[1,5]=FALSE
+ATA_ArcSwiChannelActive[1,6]=FALSE
+ATA_ArcSwiChannelActive[1,7]=FALSE
+ATA_ArcSwiChannelActive[1,8]=FALSE
+ATA_ArcSwiChannelActive[2,1]=TRUE
+ATA_ArcSwiChannelActive[2,2]=TRUE
+ATA_ArcSwiChannelActive[2,3]=TRUE
+ATA_ArcSwiChannelActive[2,4]=TRUE
+ATA_ArcSwiChannelActive[2,5]=FALSE
+ATA_ArcSwiChannelActive[2,6]=FALSE
+ATA_ArcSwiChannelActive[2,7]=FALSE
+ATA_ArcSwiChannelActive[2,8]=FALSE
+ATA_ArcSwiChannelActive[3,1]=FALSE
+ATA_ArcSwiChannelActive[3,2]=TRUE
+ATA_ArcSwiChannelActive[3,3]=FALSE
+ATA_ArcSwiChannelActive[3,4]=FALSE
+ATA_ArcSwiChannelActive[3,5]=FALSE
+ATA_ArcSwiChannelActive[3,6]=FALSE
+ATA_ArcSwiChannelActive[3,7]=FALSE
+ATA_ArcSwiChannelActive[3,8]=FALSE
+;ENDFOLD
+;FOLD Crater filling process
+DECL BOOL ATA_ArcOffChannelActive[3,8]
+ATA_ArcOffChannelActive[1,1]=TRUE
+ATA_ArcOffChannelActive[1,2]=TRUE
+ATA_ArcOffChannelActive[1,3]=TRUE
+ATA_ArcOffChannelActive[1,4]=TRUE
+ATA_ArcOffChannelActive[1,5]=FALSE
+ATA_ArcOffChannelActive[1,6]=FALSE
+ATA_ArcOffChannelActive[1,7]=FALSE
+ATA_ArcOffChannelActive[1,8]=FALSE
+ATA_ArcOffChannelActive[2,1]=TRUE
+ATA_ArcOffChannelActive[2,2]=TRUE
+ATA_ArcOffChannelActive[2,3]=TRUE
+ATA_ArcOffChannelActive[2,4]=TRUE
+ATA_ArcOffChannelActive[2,5]=FALSE
+ATA_ArcOffChannelActive[2,6]=FALSE
+ATA_ArcOffChannelActive[2,7]=FALSE
+ATA_ArcOffChannelActive[2,8]=FALSE
+ATA_ArcOffChannelActive[3,1]=FALSE
+ATA_ArcOffChannelActive[3,2]=TRUE
+ATA_ArcOffChannelActive[3,3]=FALSE
+ATA_ArcOffChannelActive[3,4]=FALSE
+ATA_ArcOffChannelActive[3,5]=FALSE
+ATA_ArcOffChannelActive[3,6]=FALSE
+ATA_ArcOffChannelActive[3,7]=FALSE
+ATA_ArcOffChannelActive[3,8]=FALSE
+;ENDFOLD
+;ENDFOLD
+;FOLD Number of points in Controller line
+DECL INT ATA_MaxPointOfChannel[3,8]
+ATA_MaxPointOfChannel[1,1]=2
+ATA_MaxPointOfChannel[1,2]=2
+ATA_MaxPointOfChannel[1,3]=2
+ATA_MaxPointOfChannel[1,4]=2
+ATA_MaxPointOfChannel[1,5]=2
+ATA_MaxPointOfChannel[1,6]=2
+ATA_MaxPointOfChannel[1,7]=2
+ATA_MaxPointOfChannel[1,8]=2
+ATA_MaxPointOfChannel[2,1]=2
+ATA_MaxPointOfChannel[2,2]=2
+ATA_MaxPointOfChannel[2,3]=2
+ATA_MaxPointOfChannel[2,4]=2
+ATA_MaxPointOfChannel[2,5]=2
+ATA_MaxPointOfChannel[2,6]=2
+ATA_MaxPointOfChannel[2,7]=2
+ATA_MaxPointOfChannel[2,8]=2
+ATA_MaxPointOfChannel[3,1]=2
+ATA_MaxPointOfChannel[3,2]=2
+ATA_MaxPointOfChannel[3,3]=2
+ATA_MaxPointOfChannel[3,4]=2
+ATA_MaxPointOfChannel[3,5]=2
+ATA_MaxPointOfChannel[3,6]=2
+ATA_MaxPointOfChannel[3,7]=2
+ATA_MaxPointOfChannel[3,8]=2
+;ENDFOLD
+;FOLD Definitions of Controller lines
+DECL ATA_ChannelDef_T ATA_ChannelDefinition[3,8,5]
+ATA_ChannelDefinition[1,1,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,1,2]={Para 500.0,Val 500.0}
+ATA_ChannelDefinition[1,1,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,1,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,1,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,2,1]={Para 1.0,Val 1.0}
+ATA_ChannelDefinition[1,2,2]={Para 64.0,Val 64.0}
+ATA_ChannelDefinition[1,2,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,2,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,2,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,3,1]={Para -5.0,Val 0.0}
+ATA_ChannelDefinition[1,3,2]={Para 5.0,Val 100.0}
+ATA_ChannelDefinition[1,3,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,3,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,3,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,4,1]={Para -30.0,Val 0.0}
+ATA_ChannelDefinition[1,4,2]={Para 30.0,Val 60.0}
+ATA_ChannelDefinition[1,4,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,4,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,4,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,5,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,5,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,5,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,5,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,5,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,6,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,6,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,6,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,6,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,6,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,7,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,7,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,7,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,7,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,7,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,8,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,8,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,8,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,8,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[1,8,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,1,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,1,2]={Para 500.0,Val 500.0}
+ATA_ChannelDefinition[2,1,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,1,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,1,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,2,1]={Para 1.0,Val 1.0}
+ATA_ChannelDefinition[2,2,2]={Para 64.0,Val 64.0}
+ATA_ChannelDefinition[2,2,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,2,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,2,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,3,1]={Para -5.0,Val 0.0}
+ATA_ChannelDefinition[2,3,2]={Para 5.0,Val 100.0}
+ATA_ChannelDefinition[2,3,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,3,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,3,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,4,1]={Para -30.0,Val 0.0}
+ATA_ChannelDefinition[2,4,2]={Para 30.0,Val 60.0}
+ATA_ChannelDefinition[2,4,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,4,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,4,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,5,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,5,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,5,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,5,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,5,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,6,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,6,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,6,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,6,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,6,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,7,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,7,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,7,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,7,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,7,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,8,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,8,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,8,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,8,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[2,8,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,1,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,1,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,1,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,1,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,1,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,2,1]={Para 1.0,Val 1.0}
+ATA_ChannelDefinition[3,2,2]={Para 64.0,Val 64.0}
+ATA_ChannelDefinition[3,2,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,2,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,2,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,3,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,3,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,3,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,3,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,3,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,4,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,4,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,4,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,4,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,4,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,5,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,5,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,5,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,5,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,5,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,6,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,6,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,6,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,6,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,6,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,7,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,7,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,7,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,7,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,7,5]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,8,1]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,8,2]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,8,3]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,8,4]={Para 0.0,Val 0.0}
+ATA_ChannelDefinition[3,8,5]={Para 0.0,Val 0.0}
+;ENDFOLD
+ENDDAT

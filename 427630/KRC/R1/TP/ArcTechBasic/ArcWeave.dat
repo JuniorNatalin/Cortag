@@ -1,0 +1,6 @@
+&ACCESS  R
+&COMMENT ATB Weaving
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  ArcWeave PUBLIC
+
+ENDDAT

@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns="http://www.kuka.com/schemas/kxr/2009">
+  <module name="UserAdvMonitoring">
+    <uiText key="ArcParams">
+      <text xml:lang="de-DEV">Schweißparameter</text>
+      <text xml:lang="en-DEV">Welding parameters</text>
+    </uiText>
+    <uiText key="Additional_Info">
+      <text xml:lang="de-DEV">Additional Info</text>
+      <text xml:lang="en-DEV">Additional info</text>
+    </uiText>
+    <uiText key="Additional_Info_1">
+      <text xml:lang="de-DEV">Additional Info 1</text>
+      <text xml:lang="en-DEV">Additional info 1</text>
+    </uiText>
+    <uiText key="Additional_Info_2">
+      <text xml:lang="de-DEV">Additional Info 2</text>
+      <text xml:lang="en-DEV">Additional info 2</text>
+    </uiText>
+    <uiText key="ProgramName">
+      <text xml:lang="de-DEV">Program Name</text>
+      <text xml:lang="en-DEV">Program name</text>
+    </uiText>
+    <uiText key="SeamName">
+      <text xml:lang="de-DEV">Seam Name</text>
+      <text xml:lang="en-DEV">Seam name</text>
+    </uiText>
+    <uiText key="Parameters_Should">
+      <text xml:lang="de-DEV">Soll-Parameter</text>
+      <text xml:lang="en-DEV">Should parameters</text>
+    </uiText>
+    <uiText key="Parameters_Is">
+      <text xml:lang="de-DEV">Ist-Parameter</text>
+      <text xml:lang="en-DEV">Is parameters</text>
+    </uiText>
+  </module>
+</resources>

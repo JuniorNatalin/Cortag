@@ -1,0 +1,185 @@
+&ACCESS  R
+&COMMENT ATB String Library
+DEF  StringLib( )
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+GLOBAL DEFFCT CHAR[2047] AddStrings(str1[]:in, str2[]:in)
+DECL CHAR str1[]
+DECL CHAR str2[]
+DECL CHAR ret[2047]
+DECL INT result
+  
+result = StrAdd(ret[], str1[])
+result = StrAdd(ret[],  str2[])
+RETURN(ret[])
+ENDFCT
+
+GLOBAL DEF RealToString(STRDEST[]:OUT,REAL2TRANSFORM:IN)
+DECL CHAR STRDEST[]
+DECL REAL REAL2TRANSFORM
+DECL STATE_T STATE
+DECL INT OFFSET
+  OFFSET=0
+  IF STRCLEAR(STRDEST[]) THEN
+    IF ($ERR.Interpreter==#R_INT) THEN
+      CONTINUE
+      SWRITE(STRDEST[],STATE,OFFSET,"%f",REAL2TRANSFORM)
+    ELSE
+      SWRITE(STRDEST[],STATE,OFFSET,"%f",REAL2TRANSFORM)
+    ENDIF
+  ENDIF
+END
+
+GLOBAL DEF IntToString(STRDEST[]:OUT,INT2TRANSFORM:IN)
+DECL CHAR STRDEST[]
+DECL INT INT2TRANSFORM
+DECL STATE_T STATE
+DECL INT OFFSET
+  OFFSET=0
+  IF STRCLEAR(STRDEST[]) THEN
+    IF ($ERR.Interpreter==#R_INT) THEN
+      CONTINUE
+      SWRITE(STRDEST[],STATE,OFFSET,"%d",INT2TRANSFORM)
+    ELSE
+      SWRITE(STRDEST[],STATE,OFFSET,"%d",INT2TRANSFORM)
+    ENDIF
+  ENDIF
+END
+
+GLOBAL DEF AddIntToString(STRDEST[]:OUT,INT2ADD:IN)
+DECL CHAR STRDEST[]
+DECL INT INT2ADD 
+DECL CHAR STRINT[470]
+DECL INT OFFSET
+  IntToString(STRINT[],INT2ADD)
+  OFFSET=STRADD(STRDEST[],STRINT[])
+END
+
+GLOBAL DEF AddRealToString(STRDEST[]:OUT,REAL2ADD:IN)
+DECL CHAR STRDEST[]
+DECL INT REAL2ADD
+DECL CHAR STRINT[470]
+DECL INT OFFSET
+  RealToString(STRINT[],REAL2ADD)
+  OFFSET=STRADD(STRDEST[],STRINT[])
+END
+ 
+GLOBAL DEFFCT  BOOL IsStringWhiteSpace(Instr[]:in)
+DECL CHAR Instr[]
+DECL BOOL result
+DECL INT len, i
+len = strlen(Instr[])
+result= true
+FOR i = 1 to len
+   IF instr[i] <> " " THEN
+      i=len
+      result= false
+   ENDIF
+ENDFOR
+RETURN(result)
+ENDFCT
+
+GLOBAL DEFFCT BOOL stringcomp(str1[]:in, str2[]:in)
+DECL CHAR str1[]
+DECL CHAR str2[]
+RETURN(strcomp(str1[],str2[],#Not_CASE_Sens))
+ENDFCT
+
+GLOBAL DEFFCT CHAR[128] CreateCmdString(str1[]:in, str2[]:in)
+DECL CHAR str1[]
+DECL CHAR str2[]
+DECL CHAR ret[2047]
+DECL CHAR Cmd[128]
+DECL INT result
+DECL INT I
+
+result = StrAdd(ret[], str1[])
+result = StrAdd(ret[],  str2[])
+Result = strlen(ret[])
+FOR I= 1 to result
+  IF ret[i]== " " THEN
+    exit
+  ELSE
+    Cmd[i] = ret[i]
+  ENDIF
+ENDFOR
+RETURN(CMD[])
+ENDFCT
+
+GLOBAL DEFFCT CHAR[128] RemoveFromString(str1[]:in)
+DECL CHAR str1[]
+DECL CHAR str2[1]
+DECL CHAR Cmd[128]
+DECL Bool res
+DECL INT RESULt
+DECL INT I
+cmd[]=str1[2]
+Result = strlen(str1[])
+FOR I= 2 to result
+    cmd[i-1]=str1[i]
+ENDFOR
+RETURN(CMD[])
+ENDFCT
+
+GLOBAL DEFFCT CHAR[128] RemoveStrFromStr(Str[] :IN, RemoveStr[] :IN)
+DECL CHAR Str[]
+DECL CHAR RemoveStr[]
+DECL CHAR Cmd[128]
+DECL INT LenNum
+DECL INT TmpI
+DECL INT TmpII
+DECL BOOL TmpRes
+TmpII=1
+TmpRes=StrClear(Cmd[])
+LenNum = StrLen(Str[])
+FOR TmpI=1 TO (LenNum)
+   IF (Str[TmpI]<>" ") THEN
+      Cmd[TmpII]=Str[TmpI]
+      TmpII=TmpII+1
+   ENDIF
+ENDFOR
+RETURN(Cmd[])
+ENDFCT
+
+GLOBAL DEFFCT CHAR[128] RemoveFromStrL(Str[] :IN, FindStr[] :IN)
+DECL CHAR Str[]
+DECL CHAR FindStr[]
+DECL CHAR Cmd[128]
+DECL INT StrPos
+DECL INT LenNum
+DECL INT LenNumFind
+DECL INT TmpI
+LenNum = StrLen(Str[])
+LenNumFind = StrLen(FindStr[])-1
+StrPos=StrFind(1,Str[],FindStr[],#NOT_CASE_SENS)
+IF StrPos>0 THEN
+  FOR TmpI=1 TO (LenNum-StrPos-LenNumFind)
+    Cmd[TmpI]=Str[TmpI+StrPos+LenNumFind]
+  ENDFOR
+  RETURN(Cmd[])
+ELSE
+  RETURN(Str[])
+ENDIF
+ENDFCT
+
+GLOBAL DEFFCT CHAR[128] RemoveFromStrR(Str[] :IN, FindStr[] :IN)
+DECL CHAR Str[]
+DECL CHAR FindStr[]
+DECL CHAR Cmd[128]
+DECL INT StrPos
+DECL INT LenNum
+DECL INT TmpI
+LenNum = StrLen(Str[])
+StrPos=StrFind(1,Str[],FindStr[],#NOT_CASE_SENS)
+IF StrPos>0 THEN
+  FOR TmpI=1 TO (StrPos-1)
+    Cmd[TmpI]=Str[TmpI]
+  ENDFOR
+  RETURN(Cmd[])
+ELSE
+  RETURN(Str[])
+ENDIF
+ENDFCT

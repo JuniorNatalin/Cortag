@@ -1,0 +1,374 @@
+&ACCESS  R
+&COMMENT ATB Spline Weaving
+DEF  ArcSplineWeave()
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;-----------------------------------------------
+;Defines pattern in main task, sets $SPL_TECH_C[].CLASS to path
+;-----------------------------------------------
+GLOBAL DEF WTC_Define_SPL_Pattern(WeaveCmd:IN,WeaveSet:OUT,WeavingEnabled:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL WTCg_WeaveCmd_T  WeaveCmd
+DECL WTCg_WeaveDefinition_T WeaveSet ;Pattern,Length,Amplitude,Angle
+DECL WTCg_WeavePattern_T Pattern
+DECL BOOL WeavingEnabled, WeavingEnabledCheck
+;ENDFOLD
+  ;FOLD Definition of weaving pattern
+  ON_ERROR_PROCEED
+  WeavingEnabledCheck=WeavingEnabled
+  IF $ERR.NUMBER > 0 THEN
+   WeavingEnabled=TRUE
+   ERR_CLEAR($ERR)
+  ENDIF
+  ATBg_WeavingEnabled=WeavingEnabled
+
+    IF ((WTC_WeaveOption==TRUE) AND (ATBg_WeavingEnabled==TRUE)) THEN
+      Pattern=WeaveSet.Pattern
+      SWITCH Pattern
+        CASE #None
+          ;No pattern defined or last used
+        CASE #Triangle
+          IF (MechGenerator1>0)THEN
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.ORDER=3
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPNUM=4
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X2=0.25
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y2=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X3=0.75
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y3=-1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X4=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y4=0.0      
+          ENDIF
+          SetCPWeavGeneratorToIdle(MechGenerator2)
+        CASE #Trapecoid
+          IF (MechGenerator1>0)THEN
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.ORDER=3
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPNUM=7
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X2=0.166666
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y2=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X3=0.333333
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y3=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X4=0.5
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y4=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X5=0.666666
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y5=-1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X6=0.833333
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y6=-1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X7=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y7=0.0      
+          ENDIF
+          SetCPWeavGeneratorToIdle(MechGenerator2)
+        CASE #UnsymetricTrapecoid
+          IF (MechGenerator1>0)THEN
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.ORDER=3
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPNUM=6
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X2=0.1
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y2=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X3=0.3
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y3=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X4=0.5
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y4=-1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X5=0.9
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y5=-1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X6=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y6=0.0     
+          ENDIF
+          SetCPWeavGeneratorToIdle(MechGenerator2)
+        CASE #Spiral
+          
+          $SPL_TECH_LINK_C={FG1 1, FG2 1}
+          IF (MechGenerator1>0)THEN
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.ORDER=3
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPNUM=6
+            ;$SPL_TECH_C[MechGenerator1].FCT.MODE=#FCT_SIN
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y1=0.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X2=0.166666
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y2=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X3=0.333333
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y3=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X4=0.666666
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y4=-1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X5=0.833333
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y5=-1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.X6=1.0
+            $SPL_TECH_C[MechGenerator1].FCT.POLYNOMIAL.CPS1.Y6=0.0      
+          ENDIF
+          IF (MechGenerator2>0)THEN
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.ORDER=3
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPNUM=6
+            ;$SPL_TECH_C[MechGenerator2].FCT.MODE=#FCT_SIN
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.X1=0.0
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.Y1=-1.0
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.X2=0.083333
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.Y2=-1.0
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.X3=0.416666
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.Y3=1.0
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.X4=0.58
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.Y4=1.0
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.X5=0.916666
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.Y5=-1.0
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.X6=1.0
+            $SPL_TECH_C[MechGenerator2].FCT.POLYNOMIAL.CPS1.Y6=-1.0
+          ENDIF      
+       DEFAULT
+          ArcMsgNotify("UnknownMechanicalPattern","WTC",,ATBg_SeamName[],10105,Opt_NOVLSTOP_LOG)
+      ENDSWITCH
+      
+      $SPL_TECH_C[MechGenerator1].FCT.BLEND_IN=0.25
+      $SPL_TECH_C[MechGenerator2].FCT.BLEND_IN=0.25
+      $SPL_TECH_C[MechGenerator1].FCT.BLEND_OUT=0.75
+      $SPL_TECH_C[MechGenerator2].FCT.BLEND_OUT=0.75
+      
+      $SPL_TECH_C[MechGenerator1].FADE_IN=1.0
+      $SPL_TECH_C[MechGenerator2].FADE_IN=1.0
+      $SPL_TECH_C[MechGenerator1].FADE_OUT=1.0
+      $SPL_TECH_C[MechGenerator2].FADE_OUT=1.0
+      
+      ;GEOREF definitions MechGenerator1
+      IF ((Pattern<>#None)AND(MechGenerator1>0)) THEN
+        SWITCH ATBg_ToolDirection
+          CASE #X
+            $SPL_TECH_C[MechGenerator1].REF_SYS.GEOREF=#Y   
+          CASE #Z
+            SWITCH ATBg_KSSToolDirection
+              CASE #X
+                $SPL_TECH_C[MechGenerator1].REF_SYS.GEOREF=#Z
+              CASE #Z
+                $SPL_TECH_C[MechGenerator1].REF_SYS.GEOREF=#Y
+            ENDSWITCH
+        ENDSWITCH   
+      ENDIF
+      
+      ;GEOREF definitions MechGenerator2 depends upon pattern
+      IF ((MechGenerator2>0)AND(Pattern<>#None))THEN
+        SWITCH Pattern
+          CASE #Trapecoid,#Triangle,#UnsymetricTrapecoid,#Spiral
+            $SPL_TECH_C[MechGenerator2].REF_SYS.GEOREF=#X ;Standard weave
+          DEFAULT
+            ArcMsgQuit("MissingGeoRefDefinitionOfPattern","WTC",,ATBg_SeamName[],10106,Opt_VLSTOP_LOG)              
+        ENDSWITCH
+      ENDIF
+
+      IF ((MechGenerator1>0)AND(MechGenerator2>0)AND(Pattern<>#None))THEN
+        ;Definition of technology system
+        $TECHSYS_C=#TTS
+        ;Definitions when pattern not updatet
+        $SPL_TECH_C[MechGenerator1].CLASS=#PATH
+        $SPL_TECH_C[MechGenerator2].CLASS=#PATH
+      ENDIF
+      
+      SWITCH WeaveCmd
+        CASE #OffInMainTask
+          WTC_SMechSPLWeaving(#OffInMainTask,WeaveSet)
+          ChangeSplMechWeaveParams(WeaveSet)
+        CASE #OnInMainTask
+          IF (Pattern<>#None)THEN
+            ChangeSplMechWeaveParams(WeaveSet)
+            WTC_SMechSPLWeaving(#OnInMainTask,WeaveSet)
+          ELSE
+            WTC_SMechSPLWeaving(#OffInMainTask,WeaveSet)
+          ENDIF
+        CASE #OnlyDefinition
+            IF ((Pattern==#None)AND(WTCg_WeaveSwitchedActive==TRUE)) THEN
+              $SPL_TECH_C[MechGenerator1].MODE=#OFF
+              $SPL_TECH_C[MechGenerator2].MODE=#OFF
+              WTCg_WeaveSwitchedActive=FALSE              
+            ENDIF
+        DEFAULT 
+          ArcMsgNotify("UnknownWeaveCmdInMainTaskWeave","WTC",,ATBg_SeamName[],10107,Opt_NOVLSTOP_LOG)
+      ENDSWITCH
+      
+    ENDIF ;(WTC_WeaveOption)
+;ENDFOLD
+;ENDFOLD ;(Definition of weaving pattern)
+END ;(WTC_Define_CP_Pattern)
+;-----------------------------------------------
+;Activates or unactivates weaving upon main task
+;-----------------------------------------------
+GLOBAL DEF WTC_SMechSPLWeaving(WeaveCmd:IN,WeaveSet:OUT)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL WTCg_WeaveCmd_T  WeaveCmd        ;#OffInMainTask,#OnInMainTask
+DECL WTCg_WeaveDefinition_T WeaveSet  ;Weaving,Pattern,Length[mm],Amplitude[mm],Angle[°]
+;ENDFOLD
+  ;FOLD Weaving switch commands
+  IF ((WTC_WeaveOption==TRUE) AND (ATBg_WeavingEnabled==TRUE)) THEN
+    IF ((MechGenerator1<0)AND(MechGenerator2<0))THEN
+      ArcMsgQuit("NumbersOfFunctiongeneratorsZeroOrInvalid","WTC",,,10112,Opt_VLSTOP_LOG)
+    ELSE
+      IF ((MechGenerator1>0)AND(MechGenerator2>0))THEN
+        SWITCH WeaveCmd
+          CASE #InterruptOn
+            $SPL_TECH_C[MechGenerator1].FCTCTRL.SCALE_OUT=0
+            $SPL_TECH_C[MechGenerator2].FCTCTRL.SCALE_OUT=0
+            
+          CASE #InterruptOff
+            $SPL_TECH_C[MechGenerator1].FCTCTRL.SCALE_OUT = WeaveSet.Amplitude
+            $SPL_TECH_C[MechGenerator2].FCTCTRL.SCALE_OUT = WeaveSet.Amplitude
+          
+          CASE #OffInMainTask
+            IF (WTCg_WeaveSwitchedActive==TRUE)THEN
+              $SPL_TECH_C[MechGenerator1].MODE=#OFF
+              $SPL_TECH_C[MechGenerator2].MODE=#OFF
+              WTCg_WeaveSwitchedActive=FALSE
+            ENDIF
+            
+          CASE #OffByBlockSelect
+            IF (WTCg_Weave_C_Active==TRUE)THEN
+              $SPL_TECH_C[MechGenerator1].MODE=#OFF
+              $SPL_TECH_C[MechGenerator2].MODE=#OFF
+              ;Additional security: Amplitude to zero
+              $SPL_TECH_C[MechGenerator1].FCTCTRL.SCALE_OUT=0
+              $SPL_TECH_C[MechGenerator2].FCTCTRL.SCALE_OUT=0
+              WTCg_WeaveSwitchedActive=FALSE
+              WTCg_Weave_C_Active=FALSE
+            ENDIF           
+          CASE #OnInMainTask
+            IF ((WeaveSet.Pattern<>#None) AND (ATBg_DryRun==FALSE)) THEN
+              IF (ATAg_BlockWeaving==FALSE) THEN
+                $SPL_TECH_C[MechGenerator1].MODE=#CYCLE
+                $SPL_TECH_C[MechGenerator2].MODE=#CYCLE
+              ENDIF
+	      
+              WTCg_WeaveSwitchedActive=TRUE
+              WTCg_Weave_C_Active=TRUE
+            ELSE
+              IF ((WTCg_WeaveSwitchedActive==TRUE) OR (ATBg_DryRun==TRUE)) THEN
+                $SPL_TECH_C[MechGenerator1].MODE=#OFF
+                $SPL_TECH_C[MechGenerator2].MODE=#OFF
+                WTCg_WeaveSwitchedActive=FALSE
+              ENDIF
+            ENDIF
+          CASE #OnlineChange
+            IF ((WeaveSet.Pattern<>#None) AND (ATBg_DryRun==FALSE)AND(WTCg_WeaveSwitchedActive==TRUE)) THEN
+              CheckAndSetSPAngleValue(WeaveSet.Angle)
+              
+              IF (ABS($DIST_NEXT)>WeaveSet.Length) THEN
+                $SPL_TECH_C[MechGenerator1].FCTCTRL.SCALE_IN = WeaveSet.Length
+                $SPL_TECH_C[MechGenerator2].FCTCTRL.SCALE_IN = WeaveSet.Length
+              ENDIF
+              
+              IF ((WeaveCmd==#OnlineChange)AND(WeaveSet.Pattern<>#None)) THEN
+                $SPL_TECH_C[MechGenerator1].FCTCTRL.SCALE_OUT = WeaveSet.Amplitude
+                $SPL_TECH_C[MechGenerator2].FCTCTRL.SCALE_OUT = WeaveSet.Amplitude
+              ENDIF                
+            ENDIF           
+          DEFAULT
+            ArcMsgQuit("NoSuitableWeaveCmd","WTC",,ATBg_SeamName[],10109,Opt_VLSTOP_LOG)
+        ENDSWITCH
+      ELSE
+        ;No action: avoid access to $TECH structures
+      ENDIF
+    ENDIF
+  ENDIF
+  ;ENDFOLD ;(Weaving switch commands)
+  ;ENDFOLD
+END ;(WTC_SMechSPLWeaving)
+;-----------------------------------------------
+;Defines Weaving: Techsys=#TTS,Angle,Length,Amplitude
+;Checks spiral compatibility of amplitude and length
+;-----------------------------------------------
+DEF ChangeSplMechWeaveParams(WeaveSet:OUT)
+;FOLD Details
+  ;FOLD Declarations
+DECL WTCg_WeaveDefinition_T WeaveSet  ;Weaving,Pattern,Length[mm],Amplitude[mm],Angle[°]
+                                      ;Weaving:#MechanicalWeavingCP,Pattern: WTCg_WeavePattern_T
+;ENDFOLD
+  ;FOLD Implementation
+    IF ((WTC_WeaveOption==TRUE) AND (ATBg_WeavingEnabled==TRUE)) THEN
+      IF ((MechGenerator1>0)AND(MechGenerator2>0))THEN
+        IF ((WeaveSet.Length>0.0)AND(WeaveSet.Amplitude>0.0)AND(WeaveSet.Pattern<>#None)AND (ATBg_DryRun==FALSE))THEN
+          ;Check Spiral parameters
+          IF ((WeaveSet.Pattern==#Spiral) AND (ATBg_DryRun==FALSE)AND(ATBg_OnlineOptActive==FALSE)) THEN
+            IF ((WeaveSet.Amplitude<0.48*WeaveSet.Length)OR(WeaveSet.Amplitude>0.52*WeaveSet.Length))THEN
+              ArcMsgNotify("ForSpiralAmplitudeAndLengthUnsuitableSetAmplitudeToHalfOfLength","WTC",,ATBg_SeamName[],10110,Opt_NOVLSTOP_LOG)
+            ENDIF
+          ENDIF
+   
+          $TECHSYS_C=#TTS
+          CheckAndSetSPAngleValue(WeaveSet.Angle)         
+          IF WTCg_BlockWeaving == FALSE THEN   
+            IF (ABS($DIST_NEXT)>WeaveSet.Length) THEN          
+              $SPL_TECH_C[MechGenerator1].FCTCTRL.SCALE_IN=WeaveSet.Length
+              $SPL_TECH_C[MechGenerator2].FCTCTRL.SCALE_IN=WeaveSet.Length              
+            ENDIF
+            $SPL_TECH_C[MechGenerator1].FCTCTRL.SCALE_OUT=WeaveSet.Amplitude
+            $SPL_TECH_C[MechGenerator2].FCTCTRL.SCALE_OUT=WeaveSet.Amplitude
+          ENDIF
+          WTCg_ActualWeaveSet=WeaveSet
+          ;ATBg_WeaveParamChanged=NOT(ATBg_WeaveParamChanged)
+        ENDIF
+      ELSE
+        ArcMsgNotify("NumbersOfFunctiongeneratorsZeroOrInvalid","WTC",,,10112,Opt_NOVLSTOP_LOG)
+      ENDIF
+    ENDIF
+  ;ENDFOLD
+;ENDFOLD
+END ;(ChangeSplMechWeaveParams)
+;-----------------------------------------------
+;Subroutine defines generator to none oscillating one
+;-----------------------------------------------
+DEF SetCPWeavGeneratorToIdle(GeneratorNr:IN)
+;FOLD Details
+DECL INT GeneratorNr
+
+  IF ((WTC_WeaveOption==TRUE) AND (ATBg_WeavingEnabled==TRUE) AND (GeneratorNr>0)) THEN
+    $SPL_TECH_C[GeneratorNr].FCT.POLYNOMIAL.ORDER=3
+    $SPL_TECH_C[GeneratorNr].FCT.POLYNOMIAL.CPNUM=2
+    $SPL_TECH_C[GeneratorNr].FCT.POLYNOMIAL.CPS1.X1=0.0
+    $SPL_TECH_C[GeneratorNr].FCT.POLYNOMIAL.CPS1.Y1=0.0
+    $SPL_TECH_C[GeneratorNr].FCT.POLYNOMIAL.CPS1.X2=1.0
+    $SPL_TECH_C[GeneratorNr].FCT.POLYNOMIAL.CPS1.Y2=0.0
+  ENDIF
+;ENDFOLD
+END ;(SetCPWeavGeneratorToIdle)
+;------------------------------------
+;Check and correction of weave angle
+;Definition of unused angles to zero
+;------------------------------------
+DEF CheckAndSetSPAngleValue(AngleValue:IN)
+;FOLD Details
+  ;FOLD Declaration
+DECL REAL AngleValue
+;ENDFOLD
+  ;FOLD Implementation
+  IF ((WTC_WeaveOption==TRUE) AND (ATBg_WeavingEnabled==TRUE))THEN
+  
+    WHILE (AngleValue>180.0)
+      AngleValue= -(360.0-AngleValue)
+    ENDWHILE
+    
+    WHILE (AngleValue<-180.0)
+      AngleValue=-(360.0+AngleValue)
+    ENDWHILE
+    
+    ;Function generators are limitted to range +/- 179.99 degrees   
+    IF (ABS(AngleValue)>=180.0)THEN
+      IF (AngleValue>0)THEN
+        AngleValue=179.9
+      ELSE
+        AngleValue= -179.9
+      ENDIF
+    ENDIF
+    ;#SetParameterInMainTask
+    $SPL_TECH_C[MechGenerator1].REF_SYS.ANGLES.A=0.0
+    $SPL_TECH_C[MechGenerator1].REF_SYS.ANGLES.B=0.0
+    $SPL_TECH_C[MechGenerator1].REF_SYS.ANGLES.C=AngleValue
+    
+    $SPL_TECH_C[MechGenerator2].REF_SYS.ANGLES.A=0.0
+    $SPL_TECH_C[MechGenerator2].REF_SYS.ANGLES.B=0.0
+    $SPL_TECH_C[MechGenerator2].REF_SYS.ANGLES.C=AngleValue
+  ENDIF
+  ;ENDFOLD
+;ENDFOLD
+END ;(CheckAndSetSPAngleValue)

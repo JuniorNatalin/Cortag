@@ -1,0 +1,465 @@
+<Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.w3.org/2001/XMLSchema">
+  <Constants>
+    <Constant Name="Pi" Value="3.1416" Type="Real"/>
+    <Constant Name="m_s_to_m_min"           DisplayName="m/s  ->  m/min"    Value="0.016666" Type="Real"/>
+    <Constant Name="m_min_to_cm_s"          DisplayName="m/min  ->  cm/s"     Value="100.0" Type="Real"/>
+    <Constant Name="m_s_to_ipm"             DisplayName="m/s  ->  inch/min" Value="2362.204" Type="Real"/>
+    <Constant Name="m_min_to_ipm"           DisplayName="m/min  ->  inch/min" Value="39.37" Type="Real"/>
+    <Constant Name="inch_min_to_m_min"      DisplayName="inch/min  ->  m/min"       Value="0.0254" Type="Real"/>
+    <Constant Name="inch_min_to_cm_s"       DisplayName="inch/min  ->  cm/s"       Value="0.042333" Type="Real"/>
+    <Constant Name="inch_min_to_m_s"        DisplayName="inch/min  ->  m/s"       Value="0.000423333" Type="Real"/>
+    <Constant Name="cm_to_inch"             DisplayName="cm  ->  inch"     Value="0.3937" Type="Real"/>
+    <Constant Name="m_to_inch"              DisplayName="m  ->  inch"     Value="39.37" Type="Real"/>
+    <Constant Name="mm_to_m"                DisplayName="mm  ->  m"        Value="0.001" Type="Real"/>
+    <Constant Name="m_to_mm"                DisplayName="m  ->  mm"       Value="1000" Type="Int"/>
+  </Constants>
+  <KrlVariables>
+
+    <!-- System -->
+    <KrlVariable Name="rSYS1" KrlName="$VEL_C.CP" Type="Real"/>
+    <KrlVariable Name="rSYS2" KrlName="$DISTANCE" Type="Real"/>
+    <KrlVariable Name="rSYS3" KrlName="$DIST_NEXT" Type="Real"/>
+    <KrlVariable Name="iSYS4" KrlName="$ACT_BASE" Type="Int"/>
+    <KrlVariable Name="iSYS5" KrlName="$ACT_TOOL" Type="Int"/>
+    <KrlVariable Name="rSYS6" KrlName="$POS_ACT.X" Type="Real"/>
+    <KrlVariable Name="rSYS7" KrlName="$POS_ACT.Y" Type="Real"/>
+    <KrlVariable Name="rSYS8" KrlName="$POS_ACT.Z" Type="Real"/>
+    <KrlVariable Name="rSYS9" KrlName="$POS_ACT.A" Type="Real"/>
+    <KrlVariable Name="rSYS10" KrlName="$POS_ACT.B" Type="Real"/>
+    <KrlVariable Name="rSYS11" KrlName="$POS_ACT.C" Type="Real"/>
+    <KrlVariable Name="rSYS12" KrlName="$TECHVAL[1]" Type="Real"/>
+    <KrlVariable Name="rSYS13" KrlName="$TECHVAL[2]" Type="Real"/>
+    <!---ArcVariables-->
+    <KrlVariable Name="iARC1" KrlName="ATBg_IgnErrorCounter" Type="Int"/>
+    <KrlVariable Name="iARC2" KrlName="ATBg_IgnRestartCounter" Type="Int"/>
+    <KrlVariable Name="iARC3" KrlName="ATBg_SeamFailureCounter" Type="Int"/>
+    <KrlVariable Name="iARC4" KrlName="ATBg_ActArcModeOn" Type="Int"/>
+    <KrlVariable Name="iARC5" KrlName="ATBg_ActArcModeSwi" Type="Int"/>
+
+    <KrlVariable Name="rARC6" KrlName="ATBg_CurrentTimeout" Type="Real"/>
+    <KrlVariable Name="rARC7" KrlName="ATBg_GasFlowTimeout" Type="Real"/>
+    <KrlVariable Name="rARC8" KrlName="ATBg_WireFreeTimeout" Type="Real"/>
+    <KrlVariable Name="rARC9" KrlName="ATBg_CurrentOverTimeout" Type="Real"/>
+    <KrlVariable Name="rARC10" KrlName="ATBg_GasTimeoutOver" Type="Real"/>
+    <KrlVariable Name="rARC11" KrlName="ATEg_InputBypassDelay" Type="Real"/>
+    <KrlVariable Name="rARC12" KrlName="ATBg_PreDefinitionTime" Type="Real"/>
+    <KrlVariable Name="rARC13" KrlName="ATEg_ZeroVelocity" Type="Real"/>
+    <KrlVariable Name="rARC14" KrlName="ATEg_StillstandTimeout" Type="Real"/>
+    <KrlVariable Name="rARC15" KrlName="ATBg_APODistanceArcTech" Type="Real"/>
+
+    <!--JobMode-->
+    <KrlVariable Name="iSIGNALOperatingMode1" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode2" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode3" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode4" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode5" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode6" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode7" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode8" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode9" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode10" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode11" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode12" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode13" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode14" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode15" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode16" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode17" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode18" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode19" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode20" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode21" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode22" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode23" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode24" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode25" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode26" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode27" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode28" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode29" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode30" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode31" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNALOperatingMode32" KrlName="gOperatingModeAdvM" Type="Int"/>
+    <!--JobMode 1 Channels-->
+    <KrlVariable Name="iSIGNAL1Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL1Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL1Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL1Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL1Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL1Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL1Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL1Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 2 Channels-->
+    <KrlVariable Name="iSIGNAL2Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL2Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL2Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL2Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL2Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL2Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL2Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL2Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 3 Channels-->
+    <KrlVariable Name="iSIGNAL3Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL3Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL3Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL3Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL3Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL3Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL3Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL3Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 4 Channels-->
+    <KrlVariable Name="iSIGNAL4Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL4Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL4Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL4Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL4Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL4Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL4Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL4Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 5 Channels-->
+    <KrlVariable Name="iSIGNAL5Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL5Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL5Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL5Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL5Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL5Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL5Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL5Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 6 Channels-->
+    <KrlVariable Name="iSIGNAL6Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL6Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL6Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL6Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL6Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL6Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL6Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL6Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 7 Channels-->
+    <KrlVariable Name="iSIGNAL7Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL7Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL7Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL7Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL7Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL7Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL7Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL7Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 8 Channels-->
+    <KrlVariable Name="iSIGNAL8Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL8Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL8Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL8Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL8Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL8Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL8Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL8Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 9 Channels-->
+    <KrlVariable Name="iSIGNAL9Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL9Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL9Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL9Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL9Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL9Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL9Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL9Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 10 Channels-->
+    <KrlVariable Name="iSIGNAL10Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL10Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL10Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL10Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL10Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL10Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL10Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL10Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 11 Channels-->
+    <KrlVariable Name="iSIGNAL11Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL11Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL11Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL11Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL11Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL11Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL11Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL11Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 12 Channels-->
+    <KrlVariable Name="iSIGNAL12Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL12Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL12Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL12Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL12Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL12Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL12Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL12Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 13 Channels-->
+    <KrlVariable Name="iSIGNAL13Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL13Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL13Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL13Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL13Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL13Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL13Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL13Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 14 Channels-->
+    <KrlVariable Name="iSIGNAL14Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL14Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL14Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL14Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL14Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL14Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL14Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL14Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 15 Channels-->
+    <KrlVariable Name="iSIGNAL15Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL15Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL15Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL15Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL15Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL15Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL15Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL15Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 16 Channels-->
+    <KrlVariable Name="iSIGNAL16Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL16Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL16Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL16Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL16Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL16Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL16Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL16Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 17 Channels-->
+    <KrlVariable Name="iSIGNAL17Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL17Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL17Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL17Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL17Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL17Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL17Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL17Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 18 Channels-->
+    <KrlVariable Name="iSIGNAL18Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL18Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL18Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL18Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL18Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL18Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL18Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL18Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 19 Channels-->
+    <KrlVariable Name="iSIGNAL19Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL19Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL19Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL19Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL19Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL19Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL19Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL19Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 20 Channels-->
+    <KrlVariable Name="iSIGNAL20Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL20Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL20Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL20Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL20Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL20Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL20Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL20Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 21 Channels-->
+    <KrlVariable Name="iSIGNAL21Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL21Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL21Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL21Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL21Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL21Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL21Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL21Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 22 Channels-->
+    <KrlVariable Name="iSIGNAL22Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL22Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL22Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL22Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL22Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL22Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL22Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL22Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 23 Channels-->
+    <KrlVariable Name="iSIGNAL23Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL23Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL23Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL23Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL23Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL23Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL23Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL23Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 24 Channels-->
+    <KrlVariable Name="iSIGNAL24Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL24Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL24Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL24Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL24Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL24Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL24Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL24Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 25 Channels-->
+    <KrlVariable Name="iSIGNAL25Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL25Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL25Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL25Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL25Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL25Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL25Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL25Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 26 Channels-->
+    <KrlVariable Name="iSIGNAL26Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL26Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL26Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL26Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL26Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL26Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL26Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL26Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 27 Channels-->
+    <KrlVariable Name="iSIGNAL27Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL27Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL27Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL27Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL27Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL27Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL27Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL27Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 28 Channels-->
+    <KrlVariable Name="iSIGNAL28Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL28Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL28Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL28Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL28Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL28Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL28Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL28Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 29 Channels-->
+    <KrlVariable Name="iSIGNAL29Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL29Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL29Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL29Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL29Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL29Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL29Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL29Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 30 Channels-->
+    <KrlVariable Name="iSIGNAL30Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL30Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL30Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL30Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL30Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL30Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL30Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL30Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 31 Channels-->
+    <KrlVariable Name="iSIGNAL31Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL31Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL31Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL31Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL31Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL31Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL31Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL31Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+    <!--JobMode 32 Channels-->
+    <KrlVariable Name="iSIGNAL32Channel1" KrlName="gSignalChannel1AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL32Channel2" KrlName="gSignalChannel2AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL32Channel3" KrlName="gSignalChannel3AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL32Channel4" KrlName="gSignalChannel4AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL32Channel5" KrlName="gSignalChannel5AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL32Channel6" KrlName="gSignalChannel6AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL32Channel7" KrlName="gSignalChannel7AdvM" Type="Int"/>
+    <KrlVariable Name="iSIGNAL32Channel8" KrlName="gSignalChannel8AdvM" Type="Int"/>
+
+    <!-- Strings-->
+    <KrlVariable Name="strK1" KrlName="$PRO_NAME[]" Type="String"/>
+    <KrlVariable Name="strK2" KrlName="ATBg_SeamName[]" Type="String"/>
+
+    <KrlVariable Name="bIN1" KrlName="$IN[ATIg_IN[1].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN2" KrlName="$IN[ATIg_IN[2].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN3" KrlName="$IN[ATIg_IN[3].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN4" KrlName="$IN[ATIg_IN[4].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN5" KrlName="$IN[ATIg_IN[5].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN6" KrlName="$IN[ATIg_IN[6].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN7" KrlName="$IN[ATIg_IN[7].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN8" KrlName="$IN[ATIg_IN[8].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN9" KrlName="$IN[ATIg_IN[9].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN10" KrlName="$IN[ATIg_IN[10].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN11" KrlName="$IN[ATIg_IN[11].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN12" KrlName="$IN[ATIg_IN[12].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN13" KrlName="$IN[ATIg_IN[13].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN14" KrlName="$IN[ATIg_IN[14].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN15" KrlName="$IN[ATIg_IN[15].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN16" KrlName="$IN[ATIg_IN[16].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN17" KrlName="$IN[ATIg_IN[17].InNr]" Type="Bool"/>
+    <KrlVariable Name="bIN18" KrlName="$IN[ATIg_IN[18].InNr]" Type="Bool"/>
+
+    <KrlVariable Name="bOUT1" KrlName="$OUT[ATOg_Out[1].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT2" KrlName="$OUT[ATOg_Out[2].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT3" KrlName="$OUT[ATOg_Out[3].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT4" KrlName="$OUT[ATOg_Out[4].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT5" KrlName="$OUT[ATOg_Out[5].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT6" KrlName="$OUT[ATOg_Out[6].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT7" KrlName="$OUT[ATOg_Out[7].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT8" KrlName="$OUT[ATOg_Out[8].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT9" KrlName="$OUT[ATOg_Out[9].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT10" KrlName="$OUT[ATOg_Out[10].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT11" KrlName="$OUT[ATOg_Out[11].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT12" KrlName="$OUT[ATOg_Out[12].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT13" KrlName="$OUT[ATOg_Out[13].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT14" KrlName="$OUT[ATOg_Out[14].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT15" KrlName="$OUT[ATOg_Out[15].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT16" KrlName="$OUT[ATOg_Out[16].OutNr]" Type="Bool"/>
+    <KrlVariable Name="bOUT17" KrlName="$OUT[ATOg_Out[17].OutNr]" Type="Bool"/>
+
+     <KrlVariable Name="bExtraOpt11" KrlName="$OUT[ATOg_SpecOut[1,1].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt12" KrlName="$OUT[ATOg_SpecOut[1,2].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt13" KrlName="$OUT[ATOg_SpecOut[1,3].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt14" KrlName="$OUT[ATOg_SpecOut[1,4].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt15" KrlName="$OUT[ATOg_SpecOut[1,5].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt16" KrlName="$OUT[ATOg_SpecOut[1,6].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt17" KrlName="$OUT[ATOg_SpecOut[1,7].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt18" KrlName="$OUT[ATOg_SpecOut[1,8].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt21" KrlName="$OUT[ATOg_SpecOut[2,1].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt22" KrlName="$OUT[ATOg_SpecOut[2,2].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt23" KrlName="$OUT[ATOg_SpecOut[2,3].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt24" KrlName="$OUT[ATOg_SpecOut[2,4].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt25" KrlName="$OUT[ATOg_SpecOut[2,5].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt26" KrlName="$OUT[ATOg_SpecOut[2,6].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt27" KrlName="$OUT[ATOg_SpecOut[2,7].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt28" KrlName="$OUT[ATOg_SpecOut[2,8].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt31" KrlName="$OUT[ATOg_SpecOut[3,1].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt32" KrlName="$OUT[ATOg_SpecOut[3,2].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt33" KrlName="$OUT[ATOg_SpecOut[3,3].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt34" KrlName="$OUT[ATOg_SpecOut[3,4].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt35" KrlName="$OUT[ATOg_SpecOut[3,5].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt36" KrlName="$OUT[ATOg_SpecOut[3,6].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt37" KrlName="$OUT[ATOg_SpecOut[3,7].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt38" KrlName="$OUT[ATOg_SpecOut[3,8].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt41" KrlName="$OUT[ATOg_SpecOut[4,1].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt42" KrlName="$OUT[ATOg_SpecOut[4,2].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt43" KrlName="$OUT[ATOg_SpecOut[4,3].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt44" KrlName="$OUT[ATOg_SpecOut[4,4].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt45" KrlName="$OUT[ATOg_SpecOut[4,5].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt46" KrlName="$OUT[ATOg_SpecOut[4,6].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt47" KrlName="$OUT[ATOg_SpecOut[4,7].OutNr]" Type="Bool"/>
+     <KrlVariable Name="bExtraOpt48" KrlName="$OUT[ATOg_SpecOut[4,8].OutNr]" Type="Bool"/>
+  </KrlVariables>
+
+  <View Description="MenuAdvMonitoring">
+    <ViewTab Description="ArcParams">
+      <LeftView Description="ArcParams">
+        <LeftColumn Description="Parameters_Should" />
+        <RightColumn Description="Parameters_Is" />
+      </LeftView>
+      <RightView Description="Additional_Info">
+        <LeftColumn Description="Additional_Info_1" />
+        <RightColumn Description="Additional_Info_2" />
+      </RightView>
+      <TextView>
+        <StringField Description="ProgramName" Value="{strK1}" />
+        <StringField Description="SeamName" Value="{strK2}" />
+      </TextView>
+      <BoolView />
+    </ViewTab>
+  </View>
+  <General CycleTimeInmsec="200" KxrUserFileName="UserAdvMonitoring.kxr"/>
+</Configuration>

@@ -1,0 +1,1283 @@
+&ACCESS  R
+&COMMENT ATB Error and control mechanism
+DEF ArcErrorHandler()
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;*****************************************************************************************
+;Definitions of interrupts and cycflags
+;*****************************************************************************************
+GLOBAL DEF ATE_Errorhandler_Init()
+;FOLD Details;%{PE}  
+;FOLD Declaration
+DECL INT tmpI
+DECL BOOL ReduceSpeedAtStart
+;ENDFOLD
+;FOLD Periphery  control
+   ATBg_StopMessExecuted=FALSE
+   ATEg_BackSplStartActive=FALSE
+   ATEg_MoveBackwardActive=FALSE
+   ATBg_IgnErrAfterBack=FALSE
+   ATEg_MoveFwdActive=FALSE
+   ATEg_ErrStratActive=FALSE
+   ATBg_IgnoreIgnErrStrat=FALSE
+   ATBg_IgnoreWeldErrStrat=FALSE
+   WTCg_BlockWeaving=FALSE
+   ReduceSpeedAtStart=FALSE
+   FOR tmpI=1 TO 6
+      ATEg_WatchStructure[tmpI].ActCounter=0
+      ATEg_WatchStructure[tmpI].Distance=0
+   ENDFOR
+   IF (ATEg_ErrPeripheryControl>0)THEN
+      ATE_MaxDelayAtContinue=0 ;Clear maximum of executed stillstand delay time 
+      $CYCFLAG[ATEg_ErrPeripheryControl]=FALSE
+      GLOBAL INTERRUPT DECL ATEg_ErrPeriphery_ISR_Nr WHEN $CYCFLAG[ATEg_ErrPeripheryControl]==FALSE DO ATE_ErrPeriphery_ISR()
+      INTERRUPT OFF ATEg_ErrPeriphery_ISR_Nr ;(Default 8)
+      IF (ATEg_RestartControl>0)THEN
+         $CYCFLAG[ATEg_RestartControl]=FALSE
+         GLOBAL INTERRUPT DECL ATEg_ErrRestart_ISR_Nr WHEN $CYCFLAG[ATEg_RestartControl]==TRUE DO ATE_Restart_ISR()
+         $CYCFLAG[ATEg_RestartControl]=((ATEg_RestartEvent<>#Nothing)AND(ATBg_RestartCondClosed==FALSE)AND($PRO_MODE1==#GO)AND(ATBg_SaveState==#Welding))
+         INTERRUPT ON ATEg_ErrRestart_ISR_Nr
+      ENDIF
+      GLOBAL INTERRUPT DECL ATEg_ReduceSpeed_ISR_Nr WHEN $CYCFLAG[ATEg_ReduceSpeed]==TRUE DO ATE_ReduceSpeed()
+      $CYCFLAG[ATEg_ReduceSpeed]=(ATEg_ErrStratActive==TRUE) AND ($DISTANCE>ATEg_DistanceAtError - ATE_DistReduceSpeed)
+      IF ((ATAg_ER_ArcGroupEnabled) AND (ATAg_ErrorCounter > 0) AND (ATAg_ER_WeldDone==FALSE)) THEN
+         IF (ATAg_ErrorDistances[ATAg_ErrorCounter] > 0) THEN
+            IF (ATAg_ErrorDistances[ATAg_ErrorCounter] < ATE_DistReduceSpeed) THEN
+               $OV_APPL=10
+            ELSE		
+               ATBg_DistanceBeforeError = ATAg_ErrorDistances[ATAg_ErrorCounter] - ATE_DistReduceSpeed
+               $CYCFLAG[ATEg_ReduceSpeed]=(ATAg_ER_ErrorOnSeam) AND ($DISTANCE > ATBg_DistanceBeforeError)
+            ENDIF
+         ENDIF
+      ENDIF
+      GLOBAL INTERRUPT DECL ATEg_RestErrStrat_ISR_Nr WHEN $CYCFLAG[ATEg_RestAfterErrStrat]==TRUE DO ATE_RestAfterErrStrat()
+      $CYCFLAG[ATEg_RestAfterErrStrat]=(ATEg_ErrStratActive==TRUE) AND ($DISTANCE>ATEg_DistanceAtError)
+      IF ((ATAg_ER_ArcGroupEnabled) AND (ATAg_ErrorCounter > 0) AND (ATAg_ER_WeldDone==FALSE)) THEN
+         IF (ATAg_ErrorDistances[ATAg_ErrorCounter] > 0) THEN
+            ATBg_DistanceAtError = ATAg_ErrorDistances[ATAg_ErrorCounter]
+            $CYCFLAG[ATEg_RestAfterErrStrat]=(ATAg_ER_ErrorOnSeam) AND ($DISTANCE > ATBg_DistanceAtError)
+         ENDIF
+      ENDIF
+      IF (ATAg_ER_ArcGroupEnabled) AND (ATAg_ErrorCounter > 0) THEN
+         IF (ATAg_ErrorDistances[ATAg_ErrorCounter] > 0) THEN
+            INTERRUPT ON ATEg_ReduceSpeed_ISR_Nr
+            INTERRUPT ON ATEg_RestErrStrat_ISR_Nr
+            INTERRUPT OFF ATEg_ErrRestart_ISR_Nr
+         ENDIF
+      ENDIF
+      GLOBAL INTERRUPT DECL ATEg_FwdRoot_ISR_Nr WHEN $CYCFLAG[ATEg_MoveMinForward]==TRUE DO ATE_Forward_ROOT()
+      $CYCFLAG[ATEg_MoveMinForward]=((ATBg_IgnErrAfterBack==TRUE) AND (ATEg_MoveBackwardActive==TRUE) AND ($DISTANCE>ATBg_ErrorSaveDist+0.1))
+      DefineArcInputsControl();Definition of Cycflag[ATEg_ArcInputsControl] missing inputs
+      GetMaxTimeLimitsToWatch() ;ATIg_WeldMoving[]
+      ;Timerflag=TRUE, becomes new rising edge after next reload at zero
+      $CYCFLAG[ATEg_ErrPeripheryControl]=(ATEg_CoopError <> #InputError) AND (($CYCFLAG[ATEg_ArcInputsControl] OR ($TIMER_FLAG[ATEg_ToggleTimerCtrl]==FALSE) OR ATBg_ColdSeam))
+   ELSE
+      ArcMsgQuit("WrongCycflagIndexArcProcessControl","ATB",,,10221,Opt_VLSTOP_LOG)  
+   ENDIF
+   ;ENDFOLD
+   ;FOLD Online optimize control
+   GLOBAL INTERRUPT DECL ATEg_OnlineOpt_ISR_Nr WHEN ATBg_OnlineOptRequest==TRUE DO OnlineOptimize_ISR()
+   INTERRUPT ON ATEg_OnlineOpt_ISR_Nr
+   ;ENDFOLD
+;ENDFOLD 
+END ;(ATE_Errorhandler_Init)  
+;*****************************************************************************************
+;Move Backward after MoveForward
+;*****************************************************************************************
+DEF ATE_Forward_ROOT()
+;FOLD Implementation 
+BRAKE
+INTERRUPT OFF ATEg_FwdRoot_ISR_Nr
+DoErrorMovementIgnition()
+ATEg_MoveBackwardActive=FALSE
+ATBg_IgnErrAfterBack=FALSE
+;ENDFOLD
+END
+;*****************************************************************************************
+;Reduce speed for more exactly position for restart
+;*****************************************************************************************
+DEF ATE_ReduceSpeed()
+;FOLD Implementation
+INTERRUPT OFF ATEg_ReduceSpeed_ISR_Nr
+$OV_APPL=10
+;ENDFOLD
+END
+;*****************************************************************************************
+;Restart Event after BackToSplineStart
+;*****************************************************************************************
+DEF ATE_RestAfterErrStrat()
+;FOLD Implementation
+  INTERRUPT OFF ATEg_ReduceSpeed_ISR_Nr
+  INTERRUPT OFF ATEg_RestErrStrat_ISR_Nr
+
+  IF (ATAg_ER_ArcGroupEnabled) AND (ATAg_ER_ErrorOnSeam) THEN
+   ATA_Restart()
+   HandleRemoteStart()
+   BRAKE
+  ELSE
+   IF NOT ATAg_NoErrorUntilSeamEnd OR (ATAg_NoErrorUntilSeamEnd AND ATBg_IgnitionError) THEN 
+    ATBg_ColdSeam = FALSE
+   ENDIF
+   ATEg_ErrStratActive = FALSE
+  ENDIF
+  $OV_APPL = 100
+  ATE_Restart_ISR()
+;ENDFOLD 
+END
+;*****************************************************************************************
+;Restart Event after Error
+;*****************************************************************************************
+DEF ATE_RESTART_ISR()
+;FOLD Declarations
+;ENDFOLD
+;FOLD Implementation
+  IF (ATBg_OnSeam == TRUE) THEN
+    ArcTechDiag("ErrRestart", 0)
+    INTERRUPT OFF ATEg_ErrRestart_ISR_Nr
+    ;ARC Sense Call
+    ARS_ReduceWeaveCorr()
+    ;FOLD external extension ;Before Restart
+    ; do not edit this Fold!
+    ;ENDFOLD
+    HandleRemoteMoveFwd()
+    BRAKE
+    StartIgnition()
+    ;FOLD external extension ;After Restart
+    ; do not edit this Fold!
+    ;ENDFOLD
+    ;Restore override for hot welding
+    ForceRealWeldSpeedIfHot()
+    ;ARC Sense Call
+    ARS_RequestRestart()
+    INTERRUPT ON ATEg_ErrRestart_ISR_Nr
+    IF ((ATEg_MoveFwdActive==FALSE) AND (ATEg_BackSplStartActive==FALSE) AND (WTCg_BlockWeaving==TRUE)) THEN
+     WTCg_BlockWeaving=FALSE
+     WTCg_SwitchMechWeaving(#InterruptOff)
+    ENDIF
+  ELSE
+    ArcTechDiag("ErrNoRestart", 0)
+    ATBg_SaveState=#Nothing
+    ATBg_ErrorState=#Nothing
+  ENDIF
+;ENDFOLD
+END ;(ATE_RESTART_ISR)
+;*****************************************************************************************
+;Stoppmess occured
+;*****************************************************************************************
+GLOBAL DEF IRStopMessActivated()
+;FOLD Declaration
+DECL ArcState resultState
+;ENDFOLD
+;FOLD Implementation
+  IF (ATBg_StopMessExecuted==FALSE) THEN
+    ATBg_StopMessExecuted=TRUE
+  ENDIF
+;ENDFOLD
+END
+;*****************************************************************************************
+;Stopmmess Restart
+;*****************************************************************************************
+GLOBAL DEF IRStopMessDeActivated()
+;FOLD Declaration
+DECL ArcState resultState
+;ENDFOLD
+;FOLD Implementation
+    ATBg_StopMessExecuted=FALSE
+;ENDFOLD
+END
+;*****************************************************************************************
+;Errorstrategie after Ignition Error
+;*****************************************************************************************
+GLOBAL DEF DoErrorMovementIgnition()
+;FOLD Declaration
+;KeepOnPosition,MoveUpAndStop,BackFromStop,MoveBackward,MoveForward,BackToSplineStart,Userdefined
+DECL CHAR MsgText[64]
+DECL ATBg_ErrMotion_T ErrorMotion
+DECL BOOL ErrStratExternalAllowed
+DECL BOOL bTemp
+DECL CHAR MsgId[64]
+DECL CHAR MsgSource[64]
+DECL INT MsgNr
+;ENDFOLD 
+;FOLD Implementation
+  MsgText[]=" "
+  IF (((ATB_WeldRequest()==TRUE) OR (ArcSyncList > 1)) AND (ATBg_IgnoreIgnErrStrat==FALSE))  THEN
+   IF (ATBg_IgnErrorCounter<=ATBg_StartErrSet.MaxErrStrategies)THEN
+     ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+   ENDIF
+   
+   IF ATBg_InSplineBlock==TRUE THEN
+    BRAKE
+   ENDIF
+   ErrorMotion = ATBg_StartErrSet.IgnitionReaction
+   ;No BackToSplineStart for ArcSense
+   IF (ARSg_ModErrStrat==TRUE) THEN
+     IF (ErrorMotion==#BackToSplineStart) THEN
+       ArcMsgNotify("NoBackToSplineStartPossible","ATB",,ATBg_SeamName[],10288,Opt_NOVLSTOP_LOG)
+       ErrorMotion = #KeepOnPosition
+     ENDIF
+   ENDIF
+   ;FOLD Info Message ErrorStrategie
+   SWITCH ErrorMotion   
+     CASE #MoveForward
+       MsgText[]="MoveForward"
+     CASE #KeepOnPosition
+       MsgText[]="KeepOnPosition"
+     CASE #MoveUpAndStop
+       MsgText[]="MoveUpAndStop"
+     CASE #BackToSplineStart
+       IF ATBg_InSplineBlock==TRUE THEN
+         MsgText[]="BackToSplineStart"
+       ELSE
+         ArcMsgNotify("NoSplineNoBackward","ATB",,ATBg_SeamName[],10264,Opt_NOVLSTOP_LOG)
+         MsgText[]="KeepOnPosition"
+       ENDIF
+     DEFAULT
+       MsgText[]="NoValidStrategy"
+   ENDSWITCH
+   ;ENDFOLD
+  
+   ;FOLD External process stop request (e.g. for SeamTech Tracking sensor)
+   StopRequestExtProcess(MsgText[], ErrStratExternalAllowed, MsgId[], MsgSource[], MsgNr)
+   IF ErrStratExternalAllowed == FALSE THEN
+     IF ((STRLEN(MsgId[])>0) AND ( STRLEN(MsgSource[])>0) AND (VARSTATE("MsgNr")==#INITIALIZED)) THEN
+	   ArcMsgNotify(MsgId[],MsgSource[],,,MsgNr,Opt_NOVLSTOP_LOG)
+	 ELSE
+       ArcMsgNotify("ErrorStrategyNotPossible","ATB",,MsgText[],10330,Opt_NOVLSTOP_LOG)
+	 ENDIF
+	 ErrorMotion = #KeepOnPosition
+	 bTemp=STRCLEAR(MsgText[])
+	 MsgText[]="KeepOnPosition"
+   ENDIF
+   ;ENDFOLD
+
+   ArcMsgNotify("IgnitionErrorStrategie","ATB", ,MsgText[],10266,Opt_NOVLSTOP_LOG)
+
+   SWITCH ErrorMotion   
+     CASE #MoveForward
+       ArcTechDiag("ErrMoveIgn_MoveForward", 0)
+       WTCg_SwitchMechWeaving(#InterruptOn)
+       WTCg_BlockWeaving=TRUE
+       ATI_BurnFreeIfNeeded()
+       ATE_IgnitReactions(#MoveForward, ATBg_StartErrSet.FwdDistance)
+     CASE #KeepOnPosition
+       ArcTechDiag("ErrMoveIgn_KeepOnPosition", 0)
+       ;No burnfree mechanismus in strategy
+       ATE_IgnitReactions(#KeepOnPosition, ATBg_StartErrSet.FwdDistance)
+     CASE #MoveUpAndStop
+       ArcTechDiag("ErrMoveIgn_MoveUpAndStop", 0)
+       ATI_BurnFreeIfNeeded()
+       ATE_IgnitReactions(#MoveUpAndStop, ATBg_StartErrSet.FwdDistance)
+     CASE #BackToSplineStart
+       IF ATBg_InSplineBlock==TRUE THEN
+         WTCg_SwitchMechWeaving(#InterruptOn)
+         WTCg_BlockWeaving=TRUE
+         ATI_BurnFreeIfNeeded()
+         ;SUPPRESS_REPOSITIONING()
+         ArcTechDiag("ErrMoveIgn_BackToSplineStart", 0)
+         ATE_IgnitReactions(#BackToSplineStart, 0)
+       ELSE
+         ;No burnfree mechanismus in strategy
+         ArcTechDiag("ErrMoveIgn_KeepOnPosition", 0)
+         ATE_IgnitReactions(#KeepOnPosition, ATBg_StartErrSet.FwdDistance)
+       ENDIF
+   ENDSWITCH
+  ENDIF
+  ATBg_IgnoreIgnErrStrat=FALSE
+
+   ;FOLD External process continue request (e.g. for SeamTech Tracking sensor)
+   RunRequestExtProcess(MsgText[])
+   ;ENDFOLD
+
+;ENDFOLD
+END ;(DoErrorMovementIgnition)
+;*****************************************************************************************
+;Errorstrategie after Weld Error
+;*****************************************************************************************
+GLOBAL DEF DoErrorMovementWeld()
+;FOLD Declaration
+;KeepOnPosition,MoveUpAndStop,BackFromStop,MoveBackward,MoveForward,Userdefined
+DECL CHAR MsgText[64]
+DECL ATBg_ErrMotion_T ErrorMotion
+DECL REAL MotionOnSeam
+DECL BOOL ErrStratExternalAllowed
+DECL BOOL bTemp
+DECL CHAR MsgId[64]
+DECL CHAR MsgSource[64]
+DECL INT MsgNr
+;ENDFOLD
+;FOLD Implementation
+  MsgText[]=" "
+  IF (((ATB_WeldRequest()==TRUE) OR (ArcSyncList >1)) AND (ATBg_IgnoreWeldErrStrat==FALSE))OR(ATAg_NoErrorUntilSeamEnd) THEN
+   IF (ATBg_SeamFailureCounter<=ATBg_WeldErrSet.MaxBreaksOnSeam) THEN
+     ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)  
+   ENDIF
+
+   BRAKE
+   ErrorMotion = ATBg_WeldErrSet.WeldErrReaction
+   MotionOnSeam = ATBg_WeldErrSet.MotionOnSeam
+    
+   ;No ContinueWithoutRetry for ArcSense
+   IF (ARSg_ModErrStrat==TRUE) THEN
+    IF (ErrorMotion==#ContinueWithoutRetry) THEN
+     ArcMsgNotify("NoContinueWithoutRetryPossible","ATB",,ATBg_SeamName[],10291,Opt_NOVLSTOP_LOG)
+     ErrorMotion = #KeepOnPosition
+    ENDIF
+   ENDIF
+   ;Limit MoveBackward Distance for ArcSense
+   IF (ARSg_ModErrStrat==TRUE) THEN
+    IF (ErrorMotion==#MoveBackward) THEN
+     IF (MotionOnSeam > 100.0) THEN
+      ArcMsgNotify("MoveBackwardDistLimited","ATB",,ATBg_SeamName[],10289,Opt_NOVLSTOP_LOG)
+      MotionOnSeam = 100.0
+     ENDIF
+    ENDIF
+   ENDIF
+    
+   ;FOLD Info Message ErrorStrategie
+   SWITCH ErrorMotion   
+     CASE #MoveForward
+       MsgText[]="MoveForward"
+     CASE #KeepOnPosition
+       MsgText[]="KeepOnPosition"
+     CASE #MoveUpAndStop
+       MsgText[]="MoveUpAndStop"
+     CASE #MoveBackward
+       IF ATBg_InSplineBlock==TRUE THEN
+         MsgText[]="MoveBackward"
+       ELSE
+         ArcMsgNotify("NoSplineNoBackward","ATB",,ATBg_SeamName[],10264,Opt_NOVLSTOP_LOG)
+         MsgText[]="KeepOnPosition"
+       ENDIF
+     CASE #ContinueWithoutRetry
+       MsgText[]="ContinueWithoutRetry"
+     DEFAULT
+       MsgText[]="NoValidStrategy"
+   ENDSWITCH
+   ;ENDFOLD
+  
+   ;FOLD External process stop request (e.g. for SeamTech Tracking sensor)
+   StopRequestExtProcess(MsgText[], ErrStratExternalAllowed, MsgId[], MsgSource[], MsgNr)
+   IF ErrStratExternalAllowed == FALSE THEN
+     IF ((STRLEN(MsgId[])>0) AND ( STRLEN(MsgSource[])>0) AND (VARSTATE("MsgNr")==#INITIALIZED)) THEN
+	   ArcMsgNotify(MsgId[],MsgSource[],,,MsgNr,Opt_NOVLSTOP_LOG)
+	 ELSE
+       ArcMsgNotify("ErrorStrategyNotPossible","ATB",,MsgText[],10330,Opt_NOVLSTOP_LOG)
+	 ENDIF
+	 ErrorMotion = #KeepOnPosition
+	 bTemp=STRCLEAR(MsgText[])
+	 MsgText[]="KeepOnPosition"
+   ENDIF
+   ;ENDFOLD
+
+   ArcMsgNotify("WeldErrorStrategie","ATB", ,MsgText[],10265,Opt_NOVLSTOP_LOG) 
+
+   SWITCH ErrorMotion
+     CASE #MoveForward
+       ArcTechDiag("ErrMoveWeld_MoveForward", 0)
+       WTCg_SwitchMechWeaving(#InterruptOn)
+       WTCg_BlockWeaving=TRUE
+       ATI_BurnFreeIfNeeded()
+       ATE_IgnitReactions(#MoveForward, MotionOnSeam)
+     CASE #KeepOnPosition
+       ;No burnfree mechanismus in strategy
+       ArcTechDiag("ErrMoveWeld_KeepOnPosition", 0)
+       ATE_IgnitReactions(#KeepOnPosition, MotionOnSeam)
+       ;Daimler Bugfix ArcOff Spline Error
+       ;LIN $POS_RET
+     CASE #MoveUpAndStop
+       ArcTechDiag("ErrMoveWeld_MoveUpAndStop", 0)
+       ATI_BurnFreeIfNeeded()
+       ATE_IgnitReactions(#MoveUpAndStop, MotionOnSeam)
+       LIN $POS_RET
+     CASE #MoveBackward
+      IF ATBg_InSplineBlock==TRUE THEN
+        ATI_BurnFreeIfNeeded()
+        ;SUPPRESS_REPOSITIONING()
+        ArcTechDiag("ErrMoveWeld_MoveBackward", 0)
+        ATE_IgnitReactions(#MoveBackward, MotionOnSeam)
+      ELSE
+        ;No burnfree mechanismus in strategy
+        ArcTechDiag("ErrMoveWeld_KeepOnPosition", 0)
+        ATE_IgnitReactions(#KeepOnPosition, MotionOnSeam)
+        LIN $POS_RET
+      ENDIF
+     CASE #ContinueWithoutRetry
+       WTCg_SwitchMechWeaving(#OffInMainTask)
+       WTCg_BlockWeaving=TRUE
+       ATBg_ColdSeam=TRUE
+       ATBg_RestartCondClosed=TRUE
+       LIN $POS_RET
+   ENDSWITCH
+  ENDIF
+  ATBg_IgnoreWeldErrStrat=FALSE
+
+  ;FOLD External process continue request (e.g. for SeamTech Tracking sensor)
+  RunRequestExtProcess(MsgText[])
+  ;ENDFOLD
+
+;ENDFOLD
+END ;(DoErrorMovementWeld)
+;*****************************************************************************************
+;*****************************************************************************************
+GLOBAL DEF DoSeamFailureRestart()
+;FOLD Declaration
+DECL INT Offset
+DECL CHAR STRDEST[40]
+;ENDFOLD
+;FOLD Implementation
+  BRAKE ;no motion of robot 
+  ;1st time a message and signals at too much retries
+  IF (ATBg_RestartCondClosed==FALSE) THEN
+    ATOg_SetOneSignal(ATOg_CriticalSeamError,#SetIO)
+    ;Generate message for cold continuing with number of errors on seam
+    Offset=ATB_IntToString(STRDEST[],ATBg_SeamFailureCounter)
+    Offset=StrAdd(STRDEST[],",")
+    ;message will be cut at maximum of 26 characters (as sum)
+    Offset = StrAdd(STRDEST[],ATBg_SeamName[])
+    ArcMsgQuit("WarningColdSeamOnPath","ATB", ,STRDEST[],10275,Opt_VLSTOP_LOG)
+  ENDIF
+  ATB_ManuallyCutOffWire()
+  ;Restart condition closed
+  ATBg_RestartCondClosed=TRUE ;Cycflag
+  ATOg_SetOneSignal(ATOg_CriticalSeamError,#ResetIO)
+;ENDFOLD
+END ;(DoSeamFailureRestart)
+;*****************************************************************************************
+;Interrupt service program at recognizing 
+;missing signal by detecting ATIg_WeldMoving[] Group
+;*****************************************************************************************
+DEF ATE_ErrPeriphery_ISR()
+;FOLD Declaration
+DECL INT i
+DECL BOOL ErrWindowTimerIsBusyNow
+DECL BOOL STOPP_Requested
+DECL BOOL bTemp,IsRemoteError
+DECL CHAR STRDEST[64]
+DECL INT Offset
+DECL ArcState resultState
+;ENDFOLD
+;FOLD Implementation;%{PE}
+;FOLD Detection of Error
+  INTERRUPT OFF ATEg_ErrPeriphery_ISR_Nr ;Avoid next rising edges
+  IF (ATB_WeldRequest()==TRUE) THEN
+    ;FOLD Check Inputs
+      ErrWindowTimerIsBusyNow=FALSE
+      STOPP_Requested=FALSE
+      IF(ATEg_CoopError == #InputError) THEN
+        IF(ATBg_WeldErrSet.WeldErrReaction == #ContinueWithoutRetry) THEN
+            ATBg_RestartCondClosed=TRUE
+            ATEg_CoopError = #Nothing
+        ELSE
+          IF (ATAg_NoErrorUntilSeamEnd) THEN
+            ATEg_CoopError = #Nothing
+            ArcTechDiag("SaveDatas HOT Error Other", 0)
+            ATA_SaveDatas(FALSE, FALSE, TRUE)
+            ErrWindowTimerIsBusyNow=TRUE
+          ELSE
+            STOPP_Requested = TRUE
+            ErrWindowTimerIsBusyNow=TRUE
+          ENDIF
+        ENDIF   
+      ENDIF
+      
+      IF (STOPP_Requested == FALSE) AND (ATBg_ColdSeam == FALSE) AND (ATBg_OnSeam == TRUE) THEN
+        ATB_ContinousControl(STOPP_Requested,ErrWindowTimerIsBusyNow)
+      ENDIF
+    ;ENDFOLD ;(Check Inputs)
+    ;FOLD Result of Check
+      IF (ATBg_CurrentState==#Welding) AND (ATBg_ErrorState==#Nothing) THEN
+        ;Toggle timer mechanism becomes active
+        ATB_Timer(ATEg_ToggleTimerCtrl,#LoadAndStart,-ABS(ATEg_TimeFrame)) ;96 ms timer
+        IF (STOPP_Requested==TRUE)THEN
+          INTERRUPT OFF ATEg_ErrPeriphery_ISR_Nr
+          ArcTechDiag("ErrorHandler Stop HOT", 0)
+          ATB_StopAfterInputError()
+        ELSE
+          IF (ATBg_ColdSeam==FALSE) OR (ATAg_NoErrorUntilSeamEnd) THEN
+            INTERRUPT ON ATEg_ErrPeriphery_ISR_Nr ;(Default 8)
+          ENDIF
+        ENDIF
+      ENDIF
+    ;ENDFOLD (Result of Check)
+  ELSE ;if robot is coldseam
+    IF (ATAg_NoErrorUntilSeamEnd) AND (ATBg_WeldErrSet.WeldErrReaction <> #ContinueWithoutRetry) THEN
+      IF (ATEg_CoopError == #InputError) THEN
+        ATEg_CoopError = #Nothing
+        ArcTechDiag("SaveDatas COLD Error Other", 0)
+        ATA_SaveDatas(FALSE, FALSE, TRUE)
+      ENDIF
+    ENDIF
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END
+;*****************************************************************************************
+;*****************************************************************************************
+GLOBAL DEF ATB_ContinousControl(STOPP_Requested:OUT,ErrWindowTimerIsBusyNow:OUT)
+;FOLD Declaration
+DECL BOOL STOPP_Requested,ErrWindowTimerIsBusyNow
+DECL BOOL IsRemoteError, SimError
+DECL INT i
+;ENDFOLD
+;FOLD Implementation
+SimError = ATEg_SimSeamError
+IF (ABS($TIMER[ATEg_ToggleTimerCtrl])>(ATEg_TimeFrame)) THEN
+  FOR i=1 TO 6
+    ATEg_WatchStructure[i].ActCounter=0
+    ATEg_WatchStructure[i].Distance=0
+  ENDFOR
+ENDIF
+FOR i=1 TO 6
+  IF (($IN[ATE_Ctrl[i]]<>ATE_Sts[i]) OR (SimError==TRUE)) THEN
+    ;Missing signal detected,incremented and time stamped
+    ATEg_WatchStructure[i].ActCounter=ATEg_WatchStructure[i].ActCounter+1
+    IF (ATEg_WatchStructure[i].ActCounter==1) THEN
+      ;Save Position at 1st enty of missing input after ignore delay
+      ATEg_WatchStructure[i].Distance=$DISTANCE
+    ENDIF 
+      ;Check the out of limit
+      IF ((ATEg_WatchStructure[i].ActCounter>ATEg_WatchStructure[i].MaxErrorWindow) OR (SimError==TRUE)) THEN
+        SimError=FALSE
+        IF(((ATBg_WeldErrSet.WeldErrReaction == #ContinueWithoutRetry) OR ATAg_NoErrorUntilSeamEnd) AND (ARSg_ModErrStrat == FALSE)) THEN
+          IF (ATBg_WeldErrSet.WeldErrReaction == #ContinueWithoutRetry) AND (ARSg_ModErrStrat == FALSE) THEN
+            IF ATBg_CurrentState==#welding THEN 
+              SetBurnBackArcLinkXt()
+              ATOg_SetIO_Group(ATOg_WeldProblem[],#AdvanceStop)
+              ;BurnBackEndArcLinkXt() ;Only use Pulse from SetBurnBackArcLinkXt
+              ;ATI_BurnFreeIfNeeded() ;NotPossible with ContinueWithoutRetry
+              ATBg_WeldingActive = FALSE
+              ATBg_ColdSeam=TRUE
+              ATBg_RestartCondClosed=TRUE
+              IF (ATEg_CoopError <> #InputError) THEN
+                IF (ATBg_ColdSeam == FALSE) THEN
+                  IsRemoteError = setRemoteError(#InputError)
+                ENDIF
+              ENDIF
+              ArcMsgNotify("WeldErrorStrategie","ATB", ,"ContinueWithoutRetry",10265,Opt_NOVLSTOP_LOG) 
+            ENDIF
+          ELSE     
+            IF (ATAg_NoErrorUntilSeamEnd) AND (ARSg_ModErrStrat == FALSE) THEN
+              SetBurnBackArcLinkXt()
+              ATOg_SetIO_Group(ATOg_WeldProblem[],#AdvanceStop)
+              ;BurnBackEndArcLinkXt() ;Only use Pulse from SetBurnBackArcLinkXt
+              ;ATI_BurnFreeIfNeeded() ;NotPossible with NoErrorUntilSeamEnd
+              ATBg_WeldingActive = FALSE
+              ATEg_CoopError = #Nothing
+              IF (ATEg_CoopError <> #InputError) THEN
+                IF (ATBg_ColdSeam == FALSE) THEN
+                  IsRemoteError = setRemoteError(#InputError)
+                ENDIF
+              ENDIF
+              ATEg_SimSeamError = FALSE
+              IF (ATBg_ColdSeam == FALSE) THEN
+                ATA_SaveDatas(TRUE, FALSE, TRUE)
+                RETURN
+              ENDIF
+            ELSE
+              ;when no error until seam end not active
+              STOPP_Requested=TRUE
+              IF (ATEg_CoopError <> #InputError)THEN
+                IsRemoteError = setRemoteError(#InputError)
+              ENDIF
+            ENDIF
+          ENDIF
+        ELSE
+         STOPP_Requested=TRUE
+         IF (ATEg_CoopError <> #InputError)THEN
+            IsRemoteError = setRemoteError(#InputError)
+         ENDIF
+        ENDIF
+      ENDIF
+    ;Flag to start toggle timer
+    ErrWindowTimerIsBusyNow=TRUE  
+  ENDIF
+ENDFOR
+;ENDFOLD
+END ;(ATB_ContinousControl)
+;*****************************************************************************************
+;*****************************************************************************************
+GLOBAL DEF ATB_StopAfterInputError()
+;FOLD Declaration
+DECL BOOL IsRemoteError, bTemp
+;ENDFOLD
+;FOLD Implementation
+  ;ARC Sense Call
+  ARS_ReduceWeaveCorr() 
+  BRAKE
+  bTemp=ATI_LimWaitForIO_Group(ATIg_WeldMoving[],0,#ArcSeamControl)
+  SetErrorState(#InputError)
+  ATEg_CoopError = #Nothing
+  INTERRUPT ON ATEg_ErrRestart_ISR_Nr
+  WAIT SEC 0.048
+  ATEg_RestartEvent=#StartAfterError ;Trigger of Restart interrupt
+;ENDFOLD
+END
+;*****************************************************************************************
+;Stillstand control at arc process
+;*****************************************************************************************
+GLOBAL DEF ATE_MotionForwardControl()
+;FOLD Declaration
+DECL REAL rROB_TIMER ;REAL: $ROB_Timer[1ms] ==> unsigned long
+DECL Modus_T Mode
+DECL State_T State
+;ENDFOLD
+;FOLD Implementation
+  IF (ATBg_CurrentState==#Welding) AND (ATBg_ErrorState==#Nothing) AND (ATBg_ColdSeam==FALSE) AND (ATBg_IgnoreError==FALSE) AND (ATEg_MoveFwdActive==FALSE) AND (ATEg_BackSplStartActive==FALSE) AND ($PRO_MODE1==#GO) AND (ATBg_StatusKey_Hot==TRUE) THEN
+    ;zero velocity control after bypass delay and after possible burn free actions
+    IF (($ROB_STOPPED OR ($VEL_ACT<=ATEg_ZeroVelocity))AND(ATEg_StillStandOption==TRUE)AND($TIMER_FLAG[ATBg_JitterDelayTimer]==TRUE)AND(ATBg_BurnFreeActive==FALSE)) THEN
+      IF (ATE_RoboterStopCtrlFlag==FALSE) THEN
+        ;Now stillstand control active
+        ATE_RoboterStopCtrlFlag=TRUE
+        rROB_TIMER=$ROB_TIMER ;[1 ms], $ROB_Timer: Unsigned integer value
+        ATE_StillstandTimeStamp=ABS(rROB_TIMER/100) ;[100 ms], CADE_StillstandTimeStamp: INT
+      ENDIF
+      
+      rROB_TIMER=$ROB_TIMER ;[1 ms], $ROB_Timer: Unsigned integer value
+      TempDelay=ABS(ABS(rROB_TIMER/100)-ATE_StillstandTimeStamp) ;[ms => 0.1 s]
+      IF (TempDelay > (ATEg_StillstandTimeout*10.0)) THEN ;TempDelay <0.1s>  <==> StillstandTime[s]
+        ATE_ActDelayTimeZeroVel=10*TempDelay
+        CWRITE($CMD,State,Mode,"STOP 1")   
+        SetErrorState(#StillstandCtrl)
+      ELSE
+        
+        IF (ATE_ActDelayTimeZeroVel>ATE_MaxDelayAtContinue)THEN
+          ;Update to find maximum
+          ATE_MaxDelayAtContinue=ATE_ActDelayTimeZeroVel ;[s] Diagnostic variable to optimize ATEg_StillstandTimeout
+        ENDIF
+      ENDIF
+    ELSE
+      ;Motion faster and out of stillstand control
+      ATE_RoboterStopCtrlFlag=FALSE
+      rROB_TIMER=$ROB_TIMER ;[1 ms], $ROB_Timer: Unsigned integer value
+      ATE_StillstandTimeStamp=ABS($ROB_TIMER/100);[ms => 0.1 s]  
+    ENDIF
+  ELSE
+    ;Process states out of interest, force clear of check
+    ATE_RoboterStopCtrlFlag=FALSE
+    rROB_TIMER=$ROB_TIMER ;[1 ms], $ROB_Timer: Unsigned integer value
+    ATE_StillstandTimeStamp=ABS($ROB_TIMER/100)   
+  ENDIF
+;ENDFOLD
+END ;(ATE_MotionForwardControl)
+;*****************************************************************************************
+;Permanent loop of submit to flag an alive submit
+;*****************************************************************************************
+GLOBAL DEF ATO_WatchDogControl()
+;FOLD Implementation
+DECL Modus_T Mode
+DECL State_T State
+DECL ArcState resultState
+ 
+  IF (($OUT[ATEg_WatchDogNr]<>ATEg_WatchDogState) AND (ATBg_WatchdogFirstPulse==TRUE) AND (ATBg_IgnoreError==FALSE)) THEN
+    ATBg_WatchdogFirstPulse=FALSE
+    CWRITE($CMD,State,Mode,"STOP 1")
+    SetErrorState(#WatchdogCtrl)
+  ENDIF
+    
+  IF (ATBg_CurrentState<>#Error) THEN
+    ATBg_WatchdogFirstPulse=TRUE   
+  ENDIF 
+  
+  PULSE($OUT[ATEg_WatchDogNr],ATEg_WatchDogState,ATEg_WatchDogTime)
+  ATB_MainLifeBeat()
+;ENDFOLD
+END ;(ATO_WatchDogControl)
+;*****************************************************************************************
+;Up to 6 signals under control by interrupt 
+;control is delayed by a delay to avoid jittering. 
+;At missing of 1 signal an continous retriggerable 
+;control is started by timer and interrupt mechanism. 
+;Timerflag is TRUE during ATEg_InputBypassDelay-Time 
+;to get rising edge
+;*****************************************************************************************
+DEF DefineArcInputsControl()
+;FOLD Declaration
+DECL INT i
+;ENDFOLD
+;FOLD Implementation
+  FOR i=1 TO 6
+    ATE_Ctrl[i]= ATIg_WeldMoving[i].InNr
+    ATE_Sts[i]=ATIg_WeldMoving[i].State
+  ENDFOR
+  
+  GetMaxTimeLimitsToWatch()
+  
+  IF (ATEg_ArcInputsControl>0)THEN
+    $CYCFLAG[ATEg_ArcInputsControl]=(((($IN[ATE_Ctrl[1]]==ATE_Sts[1])AND($IN[ATE_Ctrl[2]]==ATE_Sts[2])AND($IN[ATE_Ctrl[3]]==ATE_Sts[3])AND ($IN[ATE_Ctrl[4]]==ATE_Sts[4])AND($IN[ATE_Ctrl[5]]==ATE_Sts[5])AND($IN[ATE_Ctrl[6]]==ATE_Sts[6])AND(ATEg_SimSeamError==FALSE)))OR($TIMER_FLAG[ATBg_JitterDelayTimer]==FALSE)) 
+  ELSE
+    ArcMsgQuit("ArcInputsControlCycFlagIndexWrong","ATB",,,10227,Opt_VLSTOP_LOG)
+  ENDIF  
+;ENDFOLD
+END
+;*****************************************************************************************
+;Get maximum time limits for timer control 
+;ATIg_WeldMoving[]
+;*****************************************************************************************
+DEF GetMaxTimeLimitsToWatch()
+;FOLD Declaration
+DECL INT i
+DECL BOOL bTemp
+DECL INT Offset
+;ENDFOLD
+;FOLD Implementation
+  IF (ATEg_TimeFrame<96)THEN
+    ArcMsgQuit("CycleTimerForWatchedInputsHasToBecorrected","ATB",,,10228,Opt_VLSTOP_LOG)
+  ENDIF
+  FOR i=1 TO 6
+    IF (ATIg_WeldMoving[i].Index>0)THEN
+      ATEg_WatchStructure[i].MaxErrorWindow = ABS(ATIg_IN[ATIg_WeldMoving[i].Index].TimeFrame/ATEg_TimeFrame)
+      bTemp=STRCLEAR(ATEg_WatchStructure[i].InputName[])
+      Offset = StrAdd(ATEg_WatchStructure[i].InputName[],ATIg_IN[ATIg_WeldMoving[i].Index].InputName[])
+      ATEg_WatchStructure[i].InputName[]=ATIg_IN[ATIg_WeldMoving[i].Index].InputName[]
+    ELSE
+      ATEg_WatchStructure[i].MaxErrorWindow=0
+    ENDIF
+  ENDFOR
+;ENDFOLD
+END
+;*****************************************************************************************
+;Calculate watchdog datas for fast loop always
+;Called one time at errorhandler init
+;*****************************************************************************************
+GLOBAL DEF ATE_PrepareWatchdogCtrl()
+;FOLD Implementatation
+  ;Pre calculation of watchdog signals
+  IF (ATOg_WatchDogAlive.Index>0)THEN
+    IF ((ATOg_Out[ATOg_WatchDogAlive.Index].OutNr)>0)THEN
+      ATEg_WatchDogNr=ATOg_Out[ATOg_WatchDogAlive.Index].OutNr
+      ATEg_WatchDogState=ATOg_WatchDogAlive.State
+      PULSE($OUT[ATEg_WatchDogNr],ATEg_WatchDogState,ATEg_WatchDogTime*10)
+    ELSE
+      ATEg_WatchDogNr=1025 ;virtual all ok
+      ATEg_WatchDogState=TRUE
+    ENDIF
+  ELSE
+    ATEg_WatchDogNr=1025 ;virtual all ok
+    ATEg_WatchDogState=TRUE
+  ENDIF
+    ATB_InitLifeBeat()
+ ;ENDFOLD
+END ;(ATE_PrepareWatchdogCtrl)
+;*****************************************************************************************
+;Motions at ignition errors 
+;*****************************************************************************************
+GLOBAL DEF ATE_IgnitReactions(IgnitionReaction:IN, Distance:IN)
+;FOLD Declaration
+DECL REAL Distance
+DECL REAL MaxDistanceBack
+DECL REAL ErrorVelocity
+DECL ATBg_ErrMotion_T IgnitionReaction
+DECL CHAR MsgText[64]
+;ENDFOLD
+;FOLD Implementation
+  SWITCH IgnitionReaction
+  
+    CASE #KeepOnPosition
+    
+    CASE #MoveForward ;FwdDistance [mm]
+      ATBg_ColdSeam=TRUE
+      ATEg_DistanceAtError = $DISTANCE + Distance
+      INTERRUPT ON ATEg_ReduceSpeed_ISR_Nr
+      INTERRUPT ON ATEg_RestErrStrat_ISR_Nr
+      ATEg_MoveFwdActive=TRUE
+      ATEg_ErrStratActive=TRUE
+      ATB_StateAtErrorStrat = ATBg_CurrentState
+      ATBg_CurrentState = #Welding
+    
+    CASE #MoveUpAndStop
+	  ATE_ErrorMotionAway=$NULLFRAME
+	  ATE_ErrorMotionBack=$NULLFRAME
+      SWITCH ATBg_ToolDirection
+        CASE #X
+          ATE_ErrorMotionAway.X = -Distance
+        CASE #Z
+          ATE_ErrorMotionAway.Z = -Distance
+      ENDSWITCH
+      MoveTCP(ATE_ErrorMotionAway)
+      ATE_MoveUpPosSave = $POS_ACT
+      ArcMsgQuit("ContinueWithAdditionalStart","ATB", ,ATBg_SeamName[],10273,Opt_VLSTOP_LOG)
+      LIN ATE_MoveUpPosSave
+      SWITCH ATBg_ToolDirection
+        CASE #X
+          ATE_ErrorMotionBack.X = Distance
+        CASE #Z
+          ATE_ErrorMotionBack.Z = Distance
+      ENDSWITCH
+      MoveTCP(ATE_ErrorMotionBack)
+
+    CASE #MoveBackward, #BackToSplineStart
+      SWITCH IgnitionReaction
+        CASE #MoveBackward
+          ATEg_MoveBackwardActive = TRUE
+          ErrorVelocity = ATE_SpeedMoveBack
+          ATEg_MoveBackMaxDist = $DISTANCE - ATBg_DistanceAtArcOn
+          IF Distance >= ATEg_MoveBackMaxDist THEN
+           Distance = ATEg_MoveBackMaxDist
+          ENDIF
+        CASE #BackToSplineStart
+          ATEg_ErrStratActive = FALSE
+          ATEg_BackSplStartActive = TRUE
+          ErrorVelocity = ATE_SpeedMoveROOT
+          Distance = $DISTANCE
+          IF ATEg_MoveBackwardActive==FALSE THEN
+            ATEg_DistanceAtError = $DISTANCE
+          ELSE
+            ATEg_DistanceAtError = ATBg_ErrorSaveDist
+          ENDIF
+          ATBg_ColdSeam = TRUE
+          ATB_StateAtErrorStrat = ATBg_CurrentState
+          ATBg_CurrentState = #Welding
+      ENDSWITCH
+      ;LIN $RET.RAW.CART
+      LIN $RET.INCL_SENSOR.CART
+      ATEg_SplTarget.Distance  = Distance
+      ATEg_SplTarget.Vel       = ErrorVelocity
+      ;ATE_SplOffset.CONST_DIST = 0.0
+      ATE_SplOffset.CONST_DIST = Distance
+      ATE_SplOffset.DECAY_DIST = 0.0
+      ATE_SplBwdResult = MOVE_BACKWARD(ATEg_SplTarget, ATE_SplOffset)
+      IF ATE_SplBwdResult.ERROR <> #MBW_OK THEN
+      
+         SWITCH ATE_SplBwdResult.ERROR
+         
+          CASE #MBW_WRONG_CONTEXT
+            MsgText[]="MBW_WRONG_CONTEXT"
+          CASE #MBW_NO_MOTION
+            MsgText[]="MBW_NO_MOTION"
+          CASE #MBW_NO_SPLINE
+            MsgText[]="MBW_NO_SPLINE"
+          CASE #MBW_MAX_DEVIATION
+            MsgText[]="MBW_MAX_DEVIATION"
+          CASE #MBW_WRONG_STATUS
+            MsgText[]="MBW_MBW_WRONG_STATUS"
+          CASE #MBW_WRONG_TURN
+            MsgText[]="MBW_WRONG_TURN"
+          CASE #MBW_SYNC_IMPOSSIBLE
+            MsgText[]="MBW_SYNC_IMPOSSIBLE"
+          CASE #MBW_NESTED_CALL
+            MsgText[]="MBW_NESTED_CALL"
+          CASE #MBW_DOUBLE_CALL
+            MsgText[]="MBW_DOUBLE_CALL"
+          CASE #MBW_MISSING_ARGUMENT
+            MsgText[]="MBW_MISSING_ARGUMENT"
+          CASE #MBW_INVALID_ARGUMENT
+            MsgText[]="MBW_INVALID_ARGUBMENT"
+          CASE #MBW_EARLY_ABORTED
+            MsgText[]="MBW_EARLY_ABORTED"
+         ENDSWITCH
+         
+         ArcMsgNotify("ErrorSplineBackward","ATB", ,MsgText[],10267,Opt_NOVLSTOP_LOG)
+         HALT
+      ENDIF
+     SWITCH IgnitionReaction
+      CASE #BackToSplineStart
+       ATEg_ErrStratActive=TRUE
+	   ;FOLD external extension, Before Move 2SplStart
+	   ;ENDFOLD 
+       IF (ATEg_NoQuitOnSplStart==FALSE) THEN
+        ArcMsgQuit("ContinueWithAdditionalStart","ATB", ,ATBg_SeamName[],10273,Opt_VLSTOP_LOG)
+       ENDIF
+	   ;FOLD external extension, After Move 2SplStart
+	   ;ENDFOLD 
+	   INTERRUPT ON ATEg_ReduceSpeed_ISR_Nr
+       INTERRUPT ON ATEg_RestErrStrat_ISR_Nr
+     ENDSWITCH
+    
+    CASE #Userdefined
+    
+    DEFAULT 
+    
+  ENDSWITCH 
+;ENDFOLD 
+END ;(ATE_IgnitReactions)
+;*****************************************************************************************
+;TCP Motion 
+;*****************************************************************************************
+DEF MoveTCP(RobotMotion :IN)
+;FOLD Declaration
+DECL FRAME RobotMotion
+DECL FRAME TempFrame
+;ENDFOLD
+;FOLD Implementation
+  TempFrame=$NULLFRAME
+  TempFrame.X=RobotMotion.X
+  TempFrame.Y=RobotMotion.Y
+  TempFrame.Z=RobotMotion.Z
+  LIN  $POS_ACT:TempFrame
+;ENDFOLD
+END
+;*****************************************************************************************
+;Subroutine call by submit
+;NO STOP Reaction:Switch during current State welding to COLD
+;Switches welding and gas OFF on seam without stopping the robot
+;*****************************************************************************************
+GLOBAL DEF DoSwitchToColdStatKey()
+;FOLD Implementation
+  ArcMsgNotify("SwitchedOffByStatuskey","ATB", ,ATBg_SeamName[],10235,Opt_NOVLSTOP_LOG)
+  SetBurnBackArcLinkXt()
+  ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+  ATBg_WeldingActive = FALSE
+  ;No BurnBackEndArcLinkXt() call allowed => pulse executed
+  ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop)
+;ENDFOLD
+END ;(DoSwitchToColdStatKey)
+;*****************************************************************************************
+;Online Opt Interrupt service
+;Change of velocity
+;process and weave params
+;*****************************************************************************************
+DEF OnlineOptimize_ISR()
+;FOLD Implementation
+  INTERRUPT OFF ATEg_OnlineOpt_ISR_Nr
+  IF ((ATBg_OnlineOptActive==TRUE)AND(ATBg_DisableOnlineOpt==FALSE)AND(ATBg_SensorActive==FALSE)) THEN
+    ;Update of process params without velocity change
+    ATA_SetParameters(#ArcSwi,ATBg_ActArcModeSwi,ATBg_ActStartSet,ATBg_ActWeldSet,ATBg_ActCraterSet)
+    ;Change of weave sets at main task
+    WTCg_SwitchMechWeaving(#OnlineChange)
+    ;Reactivate online optimizing
+  ENDIF
+  ATBg_OnlineOptRequest=FALSE   
+  INTERRUPT ON ATEg_OnlineOpt_ISR_Nr
+;ENDFOLD
+END ;(OnlineOptimize_ISR)
+;*****************************************************************************************
+;AdvancedErrorDecision
+;*****************************************************************************************
+GLOBAL DEFFCT ATEg_ErrorDecision_T AdvancedErrorDecision()
+;FOLD Declaration
+DECL ATEg_DecisionRequest_T decisionRequest
+DECL ATEg_ErrorDecision_T retValue
+;ENDFOLD
+;FOLD Implementation
+retValue = #None
+decisionRequest = #ServicePosReached
+
+  SWITCH ATBg_DecisionType
+   CASE #Automatic
+    ArcMsgNotify("ServicePositionReached","ATB",,,10316,Opt_VLSTOP_LOG)
+    retValue = #Retry
+   CASE #DependingModeOp
+    IF $MODE_OP == #EX THEN
+     retValue = DecisionByInput(decisionRequest)
+    ELSE
+     retValue = DecisionByHmi(decisionRequest)
+    ENDIF     
+   CASE #PLC
+    retValue = DecisionByInput(decisionRequest)
+   CASE #SmartHMI
+    retValue = DecisionByHmi(decisionRequest)
+  ENDSWITCH
+ 
+RETURN retValue
+;ENDFOLD
+ENDFCT
+;*****************************************************************************************
+;MaxErrorDecision
+;*****************************************************************************************
+GLOBAL DEFFCT ATEg_ErrorDecision_T MaxErrorDecision()
+;FOLD Declaration
+DECL ATEg_DecisionRequest_T decisionRequest
+DECL ATEg_ErrorDecision_T retValue
+;ENDFOLD
+;FOLD Implementation
+retValue = #None
+decisionRequest = #MaxErrors
+
+  IF ATBg_CurrentState==#IgnitionFailed THEN
+   ATOg_SetOneSignal(ATOg_CriticalIgnitError,#SetIO)     
+  ELSE
+   ATOg_SetOneSignal(ATOg_CriticalSeamError,#SetIO)
+  ENDIF
+   
+  SWITCH ATBg_StrategyMaxError
+   CASE #None
+    IF ATBg_CurrentState==#IgnitionFailed THEN
+     ArcMsgQuit("TooMuchIgnitionsAndReactionsColdContinuing","ATB", ,ATBg_SeamName[],10201,Opt_VLSTOP_LOG)
+     ATEg_RestartEvent = #Nothing  
+     ATBg_RestartCondClosed=TRUE
+     IF(ATBg_IgnErrorCounter<=(ATBg_StartErrSet.MaxErrStrategies))THEN
+       ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+     ENDIF
+    ELSE
+     DoSeamFailureRestart()
+    ENDIF
+    retValue = #Abort
+   CASE #DependingModeOp
+    IF $MODE_OP == #EX THEN
+     retValue = DecisionByInput(decisionRequest)
+    ELSE
+     retValue = DecisionByHmi(decisionRequest)
+    ENDIF     
+   CASE #OnlyBySps
+    retValue = DecisionByInput(decisionRequest)
+   CASE #OnlyBySmartPad
+    retValue = DecisionByHmi(decisionRequest)
+  ENDSWITCH
+  ATOg_SetOneSignal(ATOg_CriticalIgnitError,#ResetIO)     
+  ATOg_SetOneSignal(ATOg_CriticalSeamError,#ResetIO)
+
+RETURN retValue
+;ENDFOLD
+ENDFCT
+;*****************************************************************************************
+;DecisionByHmi
+;*****************************************************************************************
+DEFFCT ATEg_ErrorDecision_T DecisionByHmi(DecisionRequest : IN)
+;FOLD Declaration
+DECL ATEg_DecisionRequest_T DecisionRequest
+DECL ATEg_ErrorDecision_T retValue
+DECL INT answer
+;ENDFOLD
+;FOLD Implementation
+retValue = #Abort
+answer = 0
+ATBg_DialogAnswer = 0
+;ATOg_SetOneSignal(ATOg_DecisionRequest,#SetIO)
+
+SWITCH DecisionRequest
+ CASE #MaxErrors
+  IF Arc_SelectMsgType() THEN
+	  IF ATBg_CurrentState==#IgnitionFailed THEN
+		ArcMsgDialog(answer,"TooMuchIgnitionsHowContinueDryOrRetry","ATB", ,"Retry","Dry",,,,,,TRUE,10299,Opt_VLSTOP_LOG)
+	  ELSE
+		ArcMsgDialog(answer,"TooMuchSeamBreaksHowContinueDryOrRetry","ATB", ,"Retry","Dry",,,,,,TRUE,10300,Opt_VLSTOP_LOG)
+	  ENDIF
+	  ATBg_DialogAnswer = answer
+  ELSE
+	  IF ATBg_CurrentState==#IgnitionFailed THEN
+	    ArcMsgNotify("TooMuchIgnitionsSwitchToMaster","ATB",,ATBg_SeamName[],10307,Opt_VLSTOP_LOG)
+	  ELSE
+	    ArcMsgNotify("TooMuchSeamBreaksSwitchToMaster","ATB",,ATBg_SeamName[],10306,Opt_VLSTOP_LOG)
+	  ENDIF
+  ENDIF
+  answer=Arc_ProcSyncAnswer(answer)
+  ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+  SWITCH answer
+    CASE 6
+      ATBg_RestartCondClosed=TRUE     
+      Arc_ProcSyncMsg(#MaxErrors)
+      retValue = #Abort
+    CASE 7
+      retValue = #Retry
+    DEFAULT
+      retValue = #Abort
+  ENDSWITCH
+  
+ CASE #ServicePosReached
+  IF Arc_SelectMsgType() THEN
+   IF (ATAg_ER_ArcGroupEnabled == TRUE) THEN
+     IF ATAg_ER_IsMyError THEN
+         ArcMsgDialog(answer,"ServicePositionReachedRequest","ATB",ATA_ER_DialogOnInspect(),"RetrySeam","CancelSeam",,,,,,FALSE,10316,Opt_VLSTOP_LOG)
+     ELSE
+         ArcMsgDialog(answer,"ServicePositionReachedLookAtSlave","ATB",,"RetrySeam","CancelSeam",,,,,,FALSE,10321,Opt_VLSTOP_LOG)
+     ENDIF
+	   ATBg_DialogAnswer = answer
+   ELSE
+      ArcMsgDialog(answer,"ServicePositionReached","ATB"," ","OK",,,,,,,FALSE,10316,Opt_VLSTOP_LOG)
+   ENDIF
+  ELSE
+     IF ATAg_ER_IsMyError THEN
+         ArcMsgNotify(ATA_ER_DialogOnInspect(),"ATB",,,10323,Opt_VLSTOP_LOG)
+         ArcMsgNotify("ServicePositionReachedSwitchToMaster","ATB",,,10319,Opt_VLSTOP_LOG)
+     ELSE
+         ArcMsgNotify("NoErrorServicePositionReachedSwitchToMaster","ATB",,,10324,Opt_VLSTOP_LOG)
+     ENDIF
+  ENDIF
+  answer=Arc_ProcSyncAnswer(answer)
+  ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+  SWITCH answer
+    CASE 6
+		Arc_ProcSyncMsg(#MaxErrors)
+		retValue = #Abort
+    CASE 7
+		ArcMsgNotify("RepairSeamAgain","ATB",,,10317,Opt_VLSTOP_LOG)
+		retValue = #Retry
+    DEFAULT
+		retValue = #Abort
+  ENDSWITCH
+ENDSWITCH
+;ATOg_SetOneSignal(ATOg_DecisionRequest,#ResetIO)
+RETURN retValue
+;ENDFOLD
+ENDFCT
+DEFFCT ATEg_ErrorDecision_T DecisionByInput(DecisionRequest : IN)
+;FOLD Declaration
+DECL ATEg_DecisionRequest_T DecisionRequest
+DECL ATEg_ErrorDecision_T retValue
+DECL ArcState state
+DECL INT nHandle
+DECL BOOL bTemp
+DECL CHAR InputName[40]
+;ENDFOLD
+;FOLD Implementation
+   retValue = #Abort
+   SWITCH DecisionRequest
+      CASE #MaxErrors 
+         ATOg_SetOneSignal(ATOg_DecisionRequest,#SetIO)
+         IF (ATI_GetInput(ATIg_DecisionValid)) THEN
+            bTemp=STRCOPY(InputName[],ATIg_IN[ATIg_DecisionValid.Index].InputName[])
+            ArcMsgState(nHandle,"WrongStateIfValidInput","ATB",,InputName[],10305)
+            WHILE (ATI_GetInput(ATIg_DecisionValid))
+               WAIT SEC 0.1
+            ENDWHILE   
+            WAIT FOR Clear_KrlMsg(nHandle) OR TRUE
+         ENDIF
+         IF (ATIg_IN[ATIg_StrategyDecision.Index].InNr <= 0) THEN
+            REPEAT
+               ArcMsgQuit("WrongStrategyDecisionInput","ATB",,,10295,Opt_VLSTOP_LOG)
+            UNTIL FALSE
+         ENDIF 
+         IF (ATIg_IN[ATIg_DecisionValid.Index].InNr > 0) THEN
+            bTemp=STRCOPY(InputName[],ATIg_IN[ATIg_DecisionValid.Index].InputName[])
+            ArcMsgState(nHandle,"WaitForInputDecisionValid","ATB",,InputName[],10302)
+            WHILE ($IN[ATIg_IN[ATIg_DecisionValid.Index].InNr] <> ATIg_DecisionValid.State)
+               WAIT SEC 0.1
+            ENDWHILE
+            WAIT FOR Clear_KrlMsg(nHandle) OR TRUE
+            IF ($IN[ATIg_IN[ATIg_StrategyDecision.Index].InNr] == ATIg_StrategyDecision.State) THEN
+               ArcMsgQuit("ColdSeamSelected","ATB",,ATBg_SeamName[],10301,Opt_VLSTOP_LOG)
+               ATB_ManuallyCutOffWire()
+               retValue = #Abort
+            ELSE
+               retValue = #Retry
+               ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+            ENDIF
+            ATOg_SetOneSignal(ATOg_DecisionRequest,#ResetIO)
+         ENDIF
+
+      CASE #ServicePosReached
+    	 WAIT FOR ATIg_ER_PLC_Signal1 == 0
+         ATOg_SetOneSignal(ATOg_PLC_CleanPosition,#SetIO)
+         WAIT FOR ATIg_ER_PLC_Signal1 > 0
+         WHILE NOT ATA_ER_PLCSignalSync()
+            ArcMsgQuit("DifferentInputPlcSelection","ATB",,,10329,Opt_VLSTOP_LOG)
+            WAIT SEC 0.2
+            WAIT FOR ATIg_ER_PLC_Signal1 > 0
+         ENDWHILE
+         SWITCH ATIg_ER_PLC_Signal1
+            CASE 1
+			   ATOg_SetOneSignal(ATOg_CriticalSeamError,#SetIO)
+               ArcMsgQuit("SeamSkipped","ATB",,ATBg_SeamName[],10318,Opt_VLSTOP_LOG)
+			   ATOg_SetOneSignal(ATOg_CriticalSeamError,#ResetIO)
+               retValue = #Abort
+            CASE 2
+               retValue = #Retry
+            DEFAULT
+               retValue = #Retry
+         ENDSWITCH
+         ATOg_SetOneSignal(ATOg_PLC_CleanPosition,#ResetIO)
+   ENDSWITCH
+  IF (ArcSyncList>1) THEN
+    SyncCmd(#Progsync, "ColdSync", ArcSyncList)
+  ENDIF
+  RETURN retValue
+;ENDFOLD
+ENDFCT ;(DecisionByInput)
+;FOLD LifeBitRoutine
+;*****************************************************************************************
+;[HeartBeat] Reset Life Bit Variables
+;*****************************************************************************************
+GLOBAL DEF ATB_InitLifeBeat()
+DECL BOOL tmpClearKrlMsg
+  ATE_HMemHeartBeat=0
+  ATE_LMemHeartBeat=0
+  IF ATE_MsgHandleHeartBeat <> 0 THEN
+    tmpClearKrlMsg = Clear_KrlMsg(ATE_MsgHandleHeartBeat)
+    ATE_MsgHandleHeartBeat = 0
+  ENDIF
+END ;(ATB_InitLifeBeat)
+;*****************************************************************************************
+;[HeartBeat] Selection power source
+;*****************************************************************************************
+DEF ATB_MainLifeBeat()
+  SWITCH ATBg_PowerSourceType
+    CASE #FRONIUS_TPSI
+      ATB_PSLifeBeat(ATIg_HeartBeatTPSi)
+  ENDSWITCH
+END ;(ATB_MainLifeBeat)
+;*****************************************************************************************
+;[HeartBeat] Set Life Bit
+;*****************************************************************************************
+DEF ATB_PSLifeBeat(tmpATIg_Group_IN_T :IN)
+DECL BOOL tmpBitLifeError,tmpClearKrlMsg
+DECL ATIg_Group_IN_T tmpATIg_Group_IN_T
+  tmpBitLifeError=TRUE
+  IF WF_CheckInStruct(tmpATIg_Group_IN_T) THEN
+    IF ($ROB_TIMER <= 500) THEN
+      ATB_InitLifeBeat()
+    ENDIF
+    IF ($IN[ATIg_IN[tmpATIg_Group_IN_T.Index].InNr]) THEN
+      ATE_LMemHeartBeat = 0
+      IF (ATE_HMemHeartBeat == 0) THEN
+        ATE_HMemHeartBeat = $ROB_TIMER
+      ENDIF
+      IF ATB_CheckLifeBeat(ATE_HMemHeartBeat,ATEg_TPSIHeartMaxDelay+Delta) THEN
+        ATB_BitLifeError()
+        tmpBitLifeError=FALSE
+      ENDIF
+    ELSE
+      ATE_HMemHeartBeat = 0
+      IF (ATE_LMemHeartBeat == 0) THEN
+        ATE_LMemHeartBeat = $ROB_TIMER
+      ENDIF
+      IF ATB_CheckLifeBeat(ATE_LMemHeartBeat,ATEg_TPSIHeartMaxDelay+Delta) THEN
+        ATB_BitLifeError()
+        tmpBitLifeError=FALSE
+      ENDIF
+    ENDIF
+  ENDIF
+  IF (tmpBitLifeError == TRUE) THEN
+    IF ATE_MsgHandleHeartBeat <> 0 THEN
+      tmpClearKrlMsg = Clear_KrlMsg(ATE_MsgHandleHeartBeat)
+      ATE_MsgHandleHeartBeat = 0
+    ENDIF
+  ENDIF
+END ;(ATB_PSLifeBeat)
+;*****************************************************************************************
+;[HeartBeat] Check Bit Life
+;*****************************************************************************************
+DEFFCT BOOL ATB_CheckLifeBeat(tmpLifeBit :IN, tmpTimeOutLifeBit :IN)
+DECL INT tmpLifeBit,tmpTimeOutLifeBit
+  tmpTimeOutLifeBit = ABS(tmpTimeOutLifeBit) + ABS(tmpLifeBit)
+  IF ($ROB_TIMER > tmpTimeOutLifeBit) THEN
+    RETURN TRUE
+  ENDIF
+  RETURN FALSE
+ENDFCT ;(ATB_CheckLifeBeat)
+;*****************************************************************************************
+;[HeartBeat] On Bit Life Error Robot stop and reset outputs
+;*****************************************************************************************
+DEF ATB_BitLifeError()
+DECL Modus_T Mode
+DECL State_T State
+IF (ATBg_CurrentState==#Welding) AND (ATBg_IgnoreError==FALSE) AND (ATBg_ErrorState==#Nothing) THEN 
+  IF (($PRO_ACT == TRUE) AND (ATB_BitLifeCondition() == TRUE)) THEN
+    CWRITE($CMD,State,Mode,"STOP 1")
+    ArcMsgNotify("WatchDogBitLife","ATB",,,10331,Opt_VLSTOP_LOG)
+  ENDIF
+  SetErrorState(#DefaultError) ; as difference to standard watchdog control
+ENDIF
+IF (ATE_MsgHandleHeartBeat == 0) THEN
+  ArcMsgState(ATE_MsgHandleHeartBeat, "WatchDogBitLife","ATB",,,10331,Opt_VLSTOP_LOG)
+ENDIF
+END ;(ATB_BitLifeError)
+;*****************************************************************************************
+;[HeartBeat] Bit Life Condition
+;*****************************************************************************************
+DEFFCT BOOL ATB_BitLifeCondition()
+DECL BOOL bTemp
+  bTemp = ((ATBg_GhostMode==FALSE) AND (ATBg_DryRun==FALSE) AND (ATBg_ColdSeam==FALSE))
+  SWITCH  $MODE_OP
+    CASE #EX
+      RETURN ((bTemp) AND (ATI_GetInput(ATIg_KeySwitchProcess)))
+    CASE #AUT
+      RETURN ((bTemp) AND ((ATI_GetInput(ATIg_KeySwitchProcess)) OR (ATBg_StatusKey_Hot==TRUE)))
+    CASE #T1,#T2
+      RETURN ((bTemp) AND (ATBg_StatusKey_Hot==TRUE))
+  ENDSWITCH
+ENDFCT
+;ENDFOLD

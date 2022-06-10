@@ -1,0 +1,125 @@
+&ACCESS  R
+&COMMENT ATB WeldingFacade module
+DEF  ArcWeldingFacade()
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;*****************************************************************************************
+;ARC_ON command
+;*****************************************************************************************
+GLOBAL DEF Arc_On(ArcMode:IN,StartSet:OUT,StartErrSet:OUT,WeldSet:OUT,WeaveSet:OUT,WeldErrSet:OUT,ArcOnTyp:IN,SeamName[]:IN,BitCodedRobotMark:IN)
+;FOLD Details;%{PE}
+;FOLD Declarations
+DECL INT RobotMarkErrChecker
+DECL INT ArcMode
+DECL ATBg_Start_T StartSet
+DECL ATBg_S_Err_T StartErrSet
+DECL ATBg_Weld_T WeldSet
+DECL WTCg_WeaveDefinition_T WeaveSet ;OUT: for future development
+DECL ATBg_W_Err_T WeldErrSet 
+DECL ATEg_Restart_T ArcOnTyp 
+DECL CHAR SeamName[]
+DECL INT BitCodedRobotMark 
+;ENDFOLD
+;FOLD Implementation
+   ON_ERROR_PROCEED 
+   RobotMarkErrChecker=BitCodedRobotMark
+   IF ($ERR.Number<>0) THEN
+      BitCodedRobotMark = -1
+      ERR_CLEAR($ERR)
+   ENDIF
+   ATB_ArcOn(ArcMode, StartSet, StartErrSet,WeldSet,WeaveSet,WeldErrSet,ArcOnTyp,SeamName[],BitCodedRobotMark)
+;ENDFOLD ;(Implementation)
+;ENDFOLD  
+END
+;*****************************************************************************************
+;ARC_SWI command
+;*****************************************************************************************
+GLOBAL DEF Arc_Swi(ArcMode:IN,WeldSet:OUT,WeaveSet:OUT,WeldErrSet:IN)
+;FOLD Details;%{PE}
+;FOLD Declarations
+DECL INT ArcMode
+DECL ATBg_Weld_T WeldSet
+DECL WTCg_WeaveDefinition_T WeaveSet ;OUT: for future development
+DECL ATBg_W_Err_T WeldErrSet
+;ENDFOLD
+;FOLD Implementation
+   ATB_ArcSwiTrigUP(ArcMode, WeldSet,WeaveSet,WeldErrSet)
+;ENDFOLD
+;ENDFOLD
+END ;(ATB_ArcSwiTrigUP)
+;*****************************************************************************************
+;ARC_OFF command
+;*****************************************************************************************
+GLOBAL DEF Arc_Off(ArcMode:IN,CraterSet:OUT)
+;FOLD Details;%{PE}
+;FOLD Declarations
+DECL INT ArcMode
+DECL ATBg_Crater_T CraterSet
+;ENDFOLD
+;FOLD Implementation
+;if MoveBackToSplineStart or MoveBackward is active don't call arcoff
+IF (ATBg_BlockArcOff == FALSE) THEN
+   ATB_ArcOff(ArcMode,CraterSet)
+ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(ATB_ArcOff)
+;*****************************************************************************************
+;Defines pattern in main task, sets $SPL_TECH_C[].CLASS to path
+;*****************************************************************************************
+GLOBAL DEF Arc_DefineSplPattern(WeaveCmd:IN,WeaveSet:OUT,WeavingEnabled:IN)
+;FOLD Details;%{PE}
+;FOLD Declarations
+DECL WTCg_WeaveCmd_T  WeaveCmd
+DECL WTCg_WeaveDefinition_T WeaveSet ;Pattern,Length,Amplitude,Angle
+DECL BOOL WeavingEnabled, WeavingEnabledCheck
+;ENDFOLD
+;FOLD Implementation
+   ON_ERROR_PROCEED
+   WeavingEnabledCheck=WeavingEnabled
+   IF $ERR.NUMBER > 0 THEN
+      WeavingEnabled=TRUE
+      ERR_CLEAR($ERR)
+   ENDIF
+   WTC_Define_SPL_Pattern(WeaveCmd, WeaveSet, WeavingEnabled)
+;ENDFOLD ;(Implementation)
+;ENDFOLD 
+END ;(WTC_Define_CP_Pattern)
+;*****************************************************************************************
+;Defines pattern in advance, sets $TECH[].CLASS to path
+;*****************************************************************************************
+GLOBAL DEF Arc_DefineCpPattern(WeaveCmd:IN,WeaveSet:OUT,WeavingEnabled:IN)
+;FOLD Details;%{PE}
+;FOLD Declarations
+DECL WTCg_WeaveCmd_T  WeaveCmd       ;Only advance types:#OffInAdvance,#OnInAdvance,#SetParameterInAdvance
+DECL WTCg_WeaveDefinition_T WeaveSet ;Pattern,Length,Amplitude,Angle
+DECL BOOL WeavingEnabled, WeavingEnabledCheck
+;ENDFOLD 
+;FOLD Implementation
+   ON_ERROR_PROCEED
+   WeavingEnabledCheck=WeavingEnabled
+   IF $ERR.NUMBER > 0 THEN
+      WeavingEnabled=TRUE
+      ERR_CLEAR($ERR)
+   ENDIF
+   WTC_Define_CP_Pattern(WeaveCmd, WeaveSet, WeavingEnabled)
+;ENDFOLD ;(Implementation)
+;ENDFOLD
+END ;(WTC_Define_CP_Pattern)
+;*****************************************************************************************
+;Definition of strike params in advance
+;*****************************************************************************************
+GLOBAL DEF Arc_DefineStrikeParams(ArcMode:IN,StartSet:OUT)
+;FOLD Details;%{PE}
+;FOLD Declarations
+DECL INT ArcMode
+DECL ATBg_Start_T StartSet
+;ENDFOLD
+;FOLD Implementation
+   ATB_DefineStrikeParams(ArcMode, StartSet)
+;ENDFOLD ;(Implementation)
+;ENDFOLD
+END ;(ATB_DefineStrikeParams)

@@ -1,0 +1,56 @@
+&ACCESS  R
+&COMMENT ATB Robo Team State
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  arcroboteamstate PUBLIC
+DECL GLOBAL ArcState MasterState=#WaitArcStable
+DECL GLOBAL INT ArcSyncList=1
+DECL GLOBAL CHAR ArcSyncMark[24]
+DECL GLOBAL BOOL Master=FALSE
+DECL CHAR SlaveReady[24]
+SlaveReady[]="SlaveReady"
+DECL CHAR ArcStateReturn[24]
+ArcStateReturn[]="ArcStateReturn"
+DECL CHAR ExecuteLogic[24]
+ExecuteLogic[]="ExecuteLogic"
+DECL CHAR LogicDone[24]
+LogicDone[]="LogicDone"
+DECL CHAR ErrorHandled[24]
+ErrorHandled[]="ErrorHandled"
+SIGNAL SList $OUT[2001]  TO $OUT[2016]
+INT sliststart=2001
+DECL GLOBAL INT ATAg_ErrorCounter=0
+DECL GLOBAL BOOL ATAg_HandleNoErrorActive=FALSE
+DECL GLOBAL BOOL ATAg_NoErrorUntilSeamEnd=FALSE
+DECL GLOBAL INT ATAg_NumberOfSlaves=0
+
+DECL GLOBAL BOOL ATAg_BlockWeaving=FALSE
+
+DECL GLOBAL REAL ATAg_ErrorDistances[5]
+ATAg_ErrorDistances[1]=0.0
+ATAg_ErrorDistances[2]=0.0
+ATAg_ErrorDistances[3]=0.0
+ATAg_ErrorDistances[4]=0.0
+ATAg_ErrorDistances[5]=0.0
+
+DECL GLOBAL BOOL ATAg_ErrorRestarts[5]
+ATAg_ErrorRestarts[1]=FALSE
+ATAg_ErrorRestarts[2]=FALSE
+ATAg_ErrorRestarts[3]=FALSE
+ATAg_ErrorRestarts[4]=FALSE
+ATAg_ErrorRestarts[5]=FALSE
+
+DECL GLOBAL BOOL ATAg_ER_WeldDone=FALSE ;Seam Done or on error go to next seam
+DECL GLOBAL BOOL ATAg_ER_ErrorOnSeam=FALSE ;Error On Seam
+DECL GLOBAL BOOL ATAg_ER_IsMyError=FALSE ;My error use only for right MSG
+DECL GLOBAL BOOL ATAg_ER_ExtError=FALSE ;Error on External Robot
+DECL GLOBAL BOOL ATAg_ER_ChkRepeatGroup=FALSE ;RepeatGroup
+DECL GLOBAL BOOL ATAg_ER_ArcGroupEnabled=FALSE ;Used to check if repeat is correctly set no select line
+DECL GLOBAL INT ATAg_ER_NRobotInGroup=0 ;Number of Robots in one same group
+DECL GLOBAL INT ATIg_ER_PLC_Signal1_Ext=0 ;Plc Selection on External Robot 
+DECL GLOBAL BOOL ATAg_ER_BeginMemPoint=FALSE
+DECL GLOBAL BOOL ATAg_WeldingMaster=FALSE
+DECL GLOBAL CHAR ATAg_ER_GroupName[128] ;Flag Group Name Module Error on Seam
+ATAg_ER_GroupName[]=" "
+DECL GLOBAL CHAR ATAg_MasterName[24] ; Name des Masters in der KRC_Coop[]
+ATAg_MasterName[]=" "
+ENDDAT

@@ -1,0 +1,7 @@
+&ACCESS  R
+&COMMENT ATB Message proxy
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  ArcMsgProxy PUBLIC
+DECL INT lnHandle=0
+
+ENDDAT

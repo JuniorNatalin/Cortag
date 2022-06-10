@@ -1,0 +1,89 @@
+&ACCESS  R
+&COMMENT ATB Input routines
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  arcinputroutines PUBLIC
+;FOLD Enum and Structures
+GLOBAL STRUC ATIg_In_T INT InNr,BOOL InitState,CHAR InputName[40],INT TimeFrame
+GLOBAL STRUC ATIg_Group_IN_T INT Index,BOOL State,INT InNr
+;ENDFOLD
+;FOLD ArcTech Inputs
+DECL GLOBAL ATIg_In_T ATIg_IN[21]
+ATIg_IN[1]={InNr 2002,InitState FALSE,InputName[] "Fonte de corrente preparada",TimeFrame 500}
+ATIg_IN[2]={InNr 0,InitState FALSE,InputName[] "Interruptor com chave soldar",TimeFrame 0}
+ATIg_IN[3]={InNr 2003,InitState FALSE,InputName[] "Sinal livre do fio",TimeFrame 0}
+ATIg_IN[4]={InNr 2001,InitState FALSE,InputName[] "Corrente existente",TimeFrame 500}
+ATIg_IN[5]={InNr 0,InitState FALSE,InputName[] "Corrente principal",TimeFrame 0}
+ATIg_IN[6]={InNr 0,InitState FALSE,InputName[] "Pressao do gas",TimeFrame 0}
+ATIg_IN[7]={InNr 0,InitState FALSE,InputName[] "Fluxo de gas",TimeFrame 0}
+ATIg_IN[8]={InNr 2006,InitState FALSE,InputName[] "Resfriamento",TimeFrame 5000}
+ATIg_IN[9]={InNr 0,InitState FALSE,InputName[] "Estoque de fio",TimeFrame 0}
+ATIg_IN[10]={InNr 2017,InitState FALSE,InputName[] "Fusivel de desconexao",TimeFrame 500}
+ATIg_IN[11]={InNr 0,InitState FALSE,InputName[] "Erro de celula",TimeFrame 0}
+ATIg_IN[12]={InNr 0,InitState FALSE,InputName[] "Comunicacao preparada",TimeFrame 0}
+ATIg_IN[13]={InNr 0,InitState FALSE,InputName[] "Processo de solda ativo",TimeFrame 0}
+ATIg_IN[14]={InNr 2008,InitState FALSE,InputName[] "Prozessueberwachung",TimeFrame 1000}
+ATIg_IN[15]={InNr 0,InitState FALSE,InputName[] "Entrada 2 definida pelo usuario",TimeFrame 0}
+ATIg_IN[16]={InNr 0,InitState FALSE,InputName[] "Entrada 3 definida pelo usuario",TimeFrame 0}
+ATIg_IN[17]={InNr 0,InitState FALSE,InputName[] "Continuacao QuenteFrio",TimeFrame 0}
+ATIg_IN[18]={InNr 0,InitState FALSE,InputName[] "Assumir a estrategia",TimeFrame 0}
+ATIg_IN[19]={InNr 0,InitState FALSE,InputName[] "Heartbeat Powersource",TimeFrame 0}
+ATIg_IN[20]={InNr 0,InitState FALSE,InputName[] "Current flow",TimeFrame 0}
+ATIg_IN[21]={InNr 0,InitState FALSE,InputName[] "Robot Motion Release",TimeFrame 0}
+;ENDFOLD
+;FOLD Input Groups;%{PE}
+;FOLD Grupo de entrada fonte de corrente pronto
+DECL GLOBAL ATIg_Group_IN_T ATIg_RdyWeldSource[6]
+ATIg_RdyWeldSource[1]={Index 1,State FALSE,InNr 2002} ;Fonte de corrente preparada
+ATIg_RdyWeldSource[2]={Index 12,State TRUE,InNr 1025} ;Comunicacao preparada
+ATIg_RdyWeldSource[3]={Index 0,State FALSE,InNr 1026}
+ATIg_RdyWeldSource[4]={Index 0,State FALSE,InNr 1026}
+ATIg_RdyWeldSource[5]={Index 0,State FALSE,InNr 1026}
+ATIg_RdyWeldSource[6]={Index 0,State FALSE,InNr 1026}
+;ENDFOLD
+;FOLD Grupo de entrada periferia de solda pronta
+DECL GLOBAL ATIg_Group_IN_T ATIg_WeldPeriphery[6]
+ATIg_WeldPeriphery[1]={Index 1,State FALSE,InNr 2002} ;Fonte de corrente preparada
+ATIg_WeldPeriphery[2]={Index 6,State TRUE,InNr 1025} ;Pressao do gas
+ATIg_WeldPeriphery[3]={Index 8,State FALSE,InNr 2006} ;Resfriamento
+ATIg_WeldPeriphery[4]={Index 9,State TRUE,InNr 1025} ;Estoque de fio
+ATIg_WeldPeriphery[5]={Index 10,State TRUE,InNr 2017} ;Fusivel de desconexao
+ATIg_WeldPeriphery[6]={Index 0,State FALSE,InNr 1026}
+;ENDFOLD
+;FOLD Grupo de entrada inicio de movimento
+DECL GLOBAL ATIg_Group_IN_T ATIg_WeldStartMove[6]
+ATIg_WeldStartMove[1]={Index 1,State FALSE,InNr 2002} ;Fonte de corrente preparada
+ATIg_WeldStartMove[2]={Index 4,State TRUE,InNr 2001} ;Corrente existente
+ATIg_WeldStartMove[3]={Index 7,State TRUE,InNr 1025} ;Fluxo de gas
+ATIg_WeldStartMove[4]={Index 8,State FALSE,InNr 2006} ;Resfriamento
+ATIg_WeldStartMove[5]={Index 9,State TRUE,InNr 1025} ;Estoque de fio
+ATIg_WeldStartMove[6]={Index 13,State TRUE,InNr 1025} ;Processo de solda ativo
+;ENDFOLD
+;FOLD Grupo de entrada monitoramento de movimento de solda
+DECL GLOBAL ATIg_Group_IN_T ATIg_WeldMoving[6]
+ATIg_WeldMoving[1]={Index 4,State TRUE,InNr 2001} ;Corrente existente
+ATIg_WeldMoving[2]={Index 5,State TRUE,InNr 1025} ;Corrente principal
+ATIg_WeldMoving[3]={Index 1,State FALSE,InNr 2002} ;Fonte de corrente preparada
+ATIg_WeldMoving[4]={Index 7,State TRUE,InNr 1025} ;Fluxo de gas
+ATIg_WeldMoving[5]={Index 14,State TRUE,InNr 2008} ;Prozessueberwachung
+ATIg_WeldMoving[6]={Index 10,State TRUE,InNr 2017} ;Fusivel de desconexao
+;ENDFOLD
+;FOLD Grupo de entrada fim do cordao de solda
+DECL GLOBAL ATIg_Group_IN_T ATIg_WeldSeamEnd[6]
+ATIg_WeldSeamEnd[1]={Index 4,State FALSE,InNr 2001} ;Corrente existente
+ATIg_WeldSeamEnd[2]={Index 5,State FALSE,InNr 1026} ;Corrente principal
+ATIg_WeldSeamEnd[3]={Index 13,State FALSE,InNr 1026} ;Processo de solda ativo
+ATIg_WeldSeamEnd[4]={Index 0,State FALSE,InNr 1026}
+ATIg_WeldSeamEnd[5]={Index 0,State FALSE,InNr 1026}
+ATIg_WeldSeamEnd[6]={Index 0,State FALSE,InNr 1026}
+;ENDFOLD
+;FOLD Separate indexed input signals
+DECL GLOBAL ATIg_Group_IN_T ATIg_KeySwitchProcess={Index 2,State TRUE,InNr 1025}
+DECL GLOBAL ATIg_Group_IN_T ATIg_WireFreeDetection={Index 3,State FALSE,InNr 2003}
+DECL GLOBAL ATIg_Group_IN_T ATIg_GasFlowAvailable={Index 7,State TRUE,InNr 1025}
+DECL GLOBAL ATIg_Group_IN_T ATIg_CollisionMonitoring={Index 10,State FALSE,InNr 2017}
+DECL GLOBAL ATIg_Group_IN_T ATIg_StrategyDecision={Index 17,State FALSE,InNr 1025}
+DECL GLOBAL ATIg_Group_IN_T ATIg_DecisionValid={Index 18,State TRUE,InNr 1025}
+DECL GLOBAL ATIg_Group_IN_T ATIg_PowerSourceReady={Index 1,State FALSE,InNr 2002}
+DECL GLOBAL ATIg_Group_IN_T ATIg_HeartBeatTPSi={Index 0,State TRUE,InNr 1025}
+;ENDFOLD
+ENDDAT

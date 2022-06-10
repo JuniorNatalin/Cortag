@@ -1,0 +1,133 @@
+&ACCESS  R
+&COMMENT ATB Error and control mechanism
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  arcerrorhandler PUBLIC
+;FOLD Enum und Structures
+; GLOBAL ENUM ArcState NoError,ErrorWindowArcInputs,IR_StopMess,TechStop,StillstandCtrl,WatchdogCtrl,ConfigurationCtrl,BurnFreeCtrl,StatusKeyOff
+GLOBAL ENUM ATEg_Restart_T Nothing,StdArcOn,StartAfterError
+GLOBAL ENUM ATEg_ErrorDecision_T None,Retry,Abort
+GLOBAL ENUM ATEg_DecisionRequest_T MaxErrors,ServicePosReached
+GLOBAL STRUC ATEg_TimeControlWatch_T INT MaxErrorWindow,ActCounter,REAL Distance,CHAR InputName[40]
+;ENDFOLD
+;FOLD Start Move Control;%{PE}
+;FOLD Ignition Motions
+DECL FRAME ATE_ErrorMotionAway={X 0.0,Y 0.0,Z 0.0}
+DECL FRAME ATE_ErrorMotionBack={X 0.0,Y 0.0,Z 0.0}
+DECL E6POS ATE_MoveUpPosSave={X 0.0,Y 0.0,Z 0.0,A 0.0,B 0.0,C 0.0,S 'B0000',T 'B0000',E1 0.0,E2 0.0,E3 0.0,E4 0.0,E5 0.0,E6 0.0}
+;ENDFOLD
+;ENDFOLD
+;FOLD Seam Control;%{PE} 
+;FOLD Continous Check
+DECL GLOBAL CONST INT ATEg_TimeFrame=96 ;[ms]  Trigger sequence of continous control at missing signal
+;ENDFOLD
+;FOLD Stillstand Control Adjustments
+DECL INT ATE_StillstandTimeStamp=36280 ;[ 1/10 s] 
+DECL GLOBAL INT TempDelay=1
+;FALSE ==> Quitt message before process can start
+;ENDFOLD
+;FOLD Watchdog Control 
+;work variables
+DECL GLOBAL INT ATEg_WatchDogNr=1025
+DECL GLOBAL BOOL ATEg_WatchDogState=TRUE
+;ENDFOLD
+;FOLD TPSi Interface
+DECL INT ATE_HMemHeartBeat=0 ;Memory $ROB_TIMER on Signal pulse High
+DECL INT ATE_LMemHeartBeat=0 ;Memory $ROB_TIMER on Signal pulse Low
+DECL INT ATE_MsgHandleHeartBeat=0 ;Handle integer value from Mesage State 
+DECL INT Delta=1000 ;Resolve problems if SubMit have long cycle 
+DECL GLOBAL INT ATEg_TPSIHeartMaxDelay=1000 ;Time Out Heart Beat
+DECL GLOBAL CONST REAL TPSi_ArcModeRecoveryTime=0.0120000 ;ArcMode has to be stable before channels would be set
+;ENDFOLD
+;ENDFOLD
+;FOLD Diagnosis
+DECL BOOL ATE_RoboterStopCtrlFlag=FALSE ;TRUE when slow motion is under control
+DECL REAL ATE_ActDelayTimeZeroVel=20.0000 ;[s] Actual time without motion
+DECL REAL ATE_MaxDelayAtContinue=20.0000 ; [s] Diagnosis variable to optimize CADE_StillstandTime
+;ENDFOLD
+;FOLD Inputs,states,Maximum of time window
+;Inputs to control while welding
+DECL INT ATE_Ctrl[6]
+ATE_Ctrl[1]=2001
+ATE_Ctrl[2]=1025
+ATE_Ctrl[3]=2002
+ATE_Ctrl[4]=1025
+ATE_Ctrl[5]=2008
+ATE_Ctrl[6]=2017
+;States to control while welding
+DECL BOOL ATE_Sts[6]
+ATE_Sts[1]=TRUE
+ATE_Sts[2]=TRUE
+ATE_Sts[3]=FALSE
+ATE_Sts[4]=TRUE
+ATE_Sts[5]=TRUE
+ATE_Sts[6]=TRUE
+;Timer for Timeframe limiter
+DECL GLOBAL ATEg_TimeControlWatch_T ATEg_WatchStructure[6]
+ATEg_WatchStructure[1]={MaxErrorWindow 5,ActCounter 0,Distance 0.0,InputName[] "Corrente existente"}
+ATEg_WatchStructure[2]={MaxErrorWindow 0,ActCounter 0,Distance 0.0,InputName[] "Corrente principal"}
+ATEg_WatchStructure[3]={MaxErrorWindow 5,ActCounter 0,Distance 0.0,InputName[] "Fonte de corrente preparada"}
+ATEg_WatchStructure[4]={MaxErrorWindow 0,ActCounter 0,Distance 0.0,InputName[] "Fluxo de gas"}
+ATEg_WatchStructure[5]={MaxErrorWindow 10,ActCounter 0,Distance 0.0,InputName[] "Prozessueberwachung"}
+ATEg_WatchStructure[6]={MaxErrorWindow 5,ActCounter 0,Distance 0.0,InputName[] "Fusivel de desconexao"}
+;ENDFOLD ;(Inputs,states,Maximum of time window)
+;FOLD Restart Control
+DECL GLOBAL ATEg_Restart_T ATEg_RestartEvent=#Nothing
+DECL GLOBAL MBW_PARA_TARGET ATEg_SplTarget
+DECL MBW_PARA_OFFSET ATE_SplOffset
+DECL MBW_RESULT ATE_SplBwdResult
+DECL REAL ATE_SpeedMoveBack=0.01000000
+DECL REAL ATE_SpeedMoveRoot=0.0200000
+DECL REAL ATE_DistReduceSpeed=2.00000
+DECL GLOBAL REAL ATEg_MoveBackMaxDist=0.0
+DECL GLOBAL REAL ATEg_DistanceAtError=0.0
+DECL GLOBAL BOOL ATEg_BackSplStartActive=FALSE
+DECL GLOBAL BOOL ATEg_ErrStratActive=FALSE
+DECL GLOBAL BOOL ATEg_MoveFwdActive=FALSE
+DECL GLOBAL BOOL ATEg_NoQuitOnSplStart=FALSE
+DECL ArcState ATB_StateAtErrorStrat=#Nothing
+DECL GLOBAL REAL ATBg_ErrorSaveDist=0.0
+DECL GLOBAL BOOL ATEg_MoveBackwardActive=FALSE
+DECL GLOBAL BOOL ATBg_IgnErrAfterBack=FALSE
+DECL GLOBAL REAL ATBg_DistanceBeforeError=0.0
+DECL GLOBAL REAL ATBg_DistanceAtError=0.0
+DECL BOOL ATA_LastWeldingRobot=FALSE
+;ENDFOLD
+;FOLD Error Strategies
+DECL GLOBAL BOOL ATBg_IgnoreIgnErrStrat=FALSE
+DECL GLOBAL BOOL ATBg_IgnoreWeldErrStrat=FALSE
+;ENDFOLD
+;FOLD Resourcen
+;FOLD  Cycflags
+DECL GLOBAL CONST INT ATEg_RestartControl=239 ;first RESTART by Interrupt
+DECL GLOBAL CONST INT ATEg_RestartControlSub=240 ;next RESTART by Interrupt
+DECL GLOBAL CONST INT ATEg_ArcInputsControl=241 ;Continous Control on path
+DECL GLOBAL CONST INT ATEg_ErrPeripheryControl=242 ;Recognizing of missing signals
+DECL GLOBAL CONST INT ATEg_RestAfterErrStrat=243 ;Start After BackToSplineStart or MoveForward
+DECL GLOBAL CONST INT ATEg_ReduceSpeed=244 ;ReduceSpeed before Start Welding After BackToSplineStart or MoveForward
+DECL GLOBAL CONST INT ATEg_MoveMinForward=245 ;MoveForeward before MoveBackward
+;ENDFOLD ;(Cycflags)
+;FOLD  Timer
+DECL GLOBAL INT ATEg_ToggleTimerCtrl=16
+DECL GLOBAL INT ATEg_HeartBeat_Timer=20 ;TPSi Interface: heartbeat like an watchdog
+;ENDFOLD
+;FOLD  Interrupt Index
+DECL GLOBAL CONST INT ATEg_ErrRoboTeam_ISR_Nr=7 ;Interrupt prepared for robo team 
+DECL GLOBAL CONST INT ATEg_ErrPeriphery_ISR_Nr=8 ;Interrupt at timer cycles
+DECL GLOBAL CONST INT ATEg_ErrRestSub_ISR_Nr=9 ;Interrupt for next restart process  
+DECL GLOBAL CONST INT ATEg_ErrRestart_ISR_Nr=10 ;Interrupt for first restart process
+DECL GLOBAL CONST INT ATEg_RestErrStrat_ISR_Nr=11 ;Interrupt for Restart after Errorstrategie
+DECL GLOBAL CONST INT ATEg_ReduceSpeed_ISR_Nr=12 ;Interrupt for Reduce Speed before Ignition      
+DECL GLOBAL CONST INT ATEg_FwdRoot_ISR_Nr=13 ;Interrupt for MoveForeward before MoveBackward
+DECL GLOBAL CONST INT ATEg_OnlineOpt_ISR_Nr=17 ;Interrupt for Online optimizing
+;ENDFOLD ;(Interrupt Index)
+;ENDFOLD ;(Resources)
+;FOLD Temporary variables
+DECL GLOBAL BOOL ATBg_WatchdogFirstPulse=TRUE
+DECL GLOBAL BOOL ATBg_StopMessExecuted=FALSE
+DECL GLOBAL INT ATBg_DialogAnswer=0
+;ENDFOLD 
+;FOLD Simulate Error
+DECL GLOBAL BOOL ATEg_SimIgnError=FALSE
+DECL GLOBAL BOOL ATEg_SimSeamError=FALSE
+;ENDFOLD
+ENDDAT

@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServoFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="/Roboter/Config/System/Common/Schemes/Servofile.xsd">
+  <Version Label="">
+    <Info Version="Any" />
+    <Schema Version="1" />
+    <!--###############################################################-->
+    <!--########                                               ########-->
+    <!--########                   KR C4 sr                    ########-->
+    <!--########                  Servo-File                   ########-->
+    <!--########             KUKA DEUTSCHLAND GMBH             ########-->
+    <!--########                                               ########-->
+    <!--###############################################################-->
+    <!--ATB 1.46.0, DB V7.455, ID 291-->
+    <!--Datum: 17-Dec-2018 07:54:32-->
+    <!--Motor:     D0Gen2C-->
+    <!--Umrichter: KSPsr12-->
+    <!--xmlFileID_D0Gen2C_KSPsr12_20181217075432_823-->
+  </Version>
+  <Parameter Index="3" Relative="true" SubIndex="1" Type="UINT16" Value="1" />
+  <Parameter Index="6" Relative="true" SubIndex="3" Type="INT16" Value="7864" />
+  <Parameter Index="8" Relative="true" SubIndex="1" Type="INT16" Value="-5243" />
+  <Parameter Index="8" Relative="true" SubIndex="3" Type="UINT16" Value="8912" />
+  <Parameter Index="8" Relative="true" SubIndex="4" Type="UINT16" Value="27852" />
+  <Parameter Index="8" Relative="true" SubIndex="7" Type="UINT16" Value="32768" />
+  <Parameter Index="8" Relative="true" SubIndex="8" Type="UINT16" Value="5704" />
+  <Parameter Index="8" Relative="true" SubIndex="9" Type="UINT16" Value="2852" />
+  <Parameter Index="8" Relative="true" SubIndex="10" Type="INT16" Value="17367" />
+  <Parameter Index="9" Relative="true" SubIndex="1" Type="UINT16" Value="2240" />
+  <Parameter Index="9" Relative="true" SubIndex="2" Type="UINT16" Value="604" />
+  <Parameter Index="9" Relative="true" SubIndex="3" Type="UINT16" Value="2240" />
+  <Parameter Index="9" Relative="true" SubIndex="4" Type="UINT16" Value="604" />
+  <Parameter Index="9" Relative="true" SubIndex="5" Type="UINT16" Value="4031" />
+  <Parameter Index="9" Relative="true" SubIndex="7" Type="UINT16" Value="5679" />
+  <Parameter Index="9" Relative="true" SubIndex="10" Type="UINT16" Value="1" />
+  <Parameter Index="9" Relative="true" SubIndex="11" Type="UINT16" Value="1" />
+  <Parameter Index="11" Relative="true" SubIndex="1" Type="UINT16" Value="35371" />
+  <Parameter Index="11" Relative="true" SubIndex="2" Type="UINT16" Value="41605" />
+  <Parameter Index="11" Relative="true" SubIndex="3" Type="UINT16" Value="40863" />
+  <Parameter Index="11" Relative="true" SubIndex="4" Type="UINT16" Value="39733" />
+  <Parameter Index="11" Relative="true" SubIndex="5" Type="UINT16" Value="38505" />
+  <Parameter Index="11" Relative="true" SubIndex="6" Type="UINT16" Value="37357" />
+  <Parameter Index="11" Relative="true" SubIndex="7" Type="UINT16" Value="36375" />
+  <Parameter Index="11" Relative="true" SubIndex="8" Type="UINT16" Value="35566" />
+  <Parameter Index="11" Relative="true" SubIndex="9" Type="UINT16" Value="34888" />
+  <Parameter Index="11" Relative="true" SubIndex="10" Type="UINT16" Value="34287" />
+  <Parameter Index="11" Relative="true" SubIndex="11" Type="UINT16" Value="33721" />
+  <Parameter Index="11" Relative="true" SubIndex="12" Type="UINT16" Value="33166" />
+  <Parameter Index="11" Relative="true" SubIndex="13" Type="UINT16" Value="32611" />
+  <Parameter Index="11" Relative="true" SubIndex="14" Type="UINT16" Value="32056" />
+  <Parameter Index="11" Relative="true" SubIndex="15" Type="UINT16" Value="31504" />
+  <Parameter Index="11" Relative="true" SubIndex="16" Type="UINT16" Value="30961" />
+  <Parameter Index="11" Relative="true" SubIndex="17" Type="UINT16" Value="30431" />
+  <Parameter Index="11" Relative="true" SubIndex="18" Type="UINT16" Value="29920" />
+  <Parameter Index="11" Relative="true" SubIndex="19" Type="UINT16" Value="29431" />
+  <Parameter Index="11" Relative="true" SubIndex="20" Type="UINT16" Value="28968" />
+  <Parameter Index="11" Relative="true" SubIndex="21" Type="UINT16" Value="28534" />
+  <Parameter Index="11" Relative="true" SubIndex="22" Type="UINT16" Value="28130" />
+  <Parameter Index="11" Relative="true" SubIndex="23" Type="UINT16" Value="27758" />
+  <Parameter Index="11" Relative="true" SubIndex="24" Type="UINT16" Value="27417" />
+  <Parameter Index="11" Relative="true" SubIndex="25" Type="UINT16" Value="27108" />
+  <Parameter Index="11" Relative="true" SubIndex="26" Type="UINT16" Value="26830" />
+  <Parameter Index="11" Relative="true" SubIndex="27" Type="UINT16" Value="26830" />
+  <Parameter Index="11" Relative="true" SubIndex="28" Type="UINT16" Value="26830" />
+  <Parameter Index="11" Relative="true" SubIndex="29" Type="UINT16" Value="26830" />
+  <Parameter Index="11" Relative="true" SubIndex="30" Type="UINT16" Value="26830" />
+  <Parameter Index="11" Relative="true" SubIndex="31" Type="UINT16" Value="26830" />
+  <Parameter Index="11" Relative="true" SubIndex="32" Type="UINT16" Value="26830" />
+  <Parameter Index="29" Relative="true" SubIndex="0" Type="INT16" Value="6553" />
+  <Parameter Index="64" Relative="true" SubIndex="1" Type="UINT16" Value="3" />
+  <Parameter Index="64" Relative="true" SubIndex="3" Type="INT16" Value="2621" />
+  <Parameter Index="67" Relative="true" SubIndex="1" Type="INT16" Value="750" />
+  <Parameter Index="67" Relative="true" SubIndex="2" Type="UINT16" Value="131" />
+</ServoFile>
+<!--checksum 9829-->

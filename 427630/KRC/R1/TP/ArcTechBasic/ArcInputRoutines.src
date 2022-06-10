@@ -1,0 +1,611 @@
+&ACCESS  R
+&COMMENT ATB Input routines
+DEF  ArcInputRoutines( )
+;*********************************
+;* Package:     ArcTechBasic     *
+;* Release      V1.5             *
+;*********************************
+END
+;*****************************************************************************************
+;Definition of all inputs
+;and clear error bits
+;*****************************************************************************************
+GLOBAL DEF ATI_DefAllInputs()
+  ;Clear Error Bits
+  ATBg_SourceErrorBits='B00000000'
+  ATBg_PeripheryErrorBits='B00000000'
+  ATBg_StartMoveErrorBits='B00000000'
+  ATBg_WeldMovingErrorBits='B00000000'
+  ATBg_ArcOffProcErrorBits='B00000000'
+  ;Executed if necessary, recognized by state  machine
+  PrepareInputFields(ATIg_WeldPeriphery[])
+  PrepareInputFields(ATIg_WeldStartMove[])
+  PrepareInputFields(ATIg_WeldMoving[])
+  PrepareInputFields(ATIg_WeldSeamEnd[])
+  PrepareInputFields(ATIg_RdyWeldSource[])
+  ;Definition of single inputs
+  PrepareSingleInputs(ATIg_KeySwitchProcess)
+  PrepareSingleInputs(ATIg_WireFreeDetection)
+  ;PrepareSingleInputs(ATIg_TorchCollission)
+  ;PrepareSingleInputs(ATIg_UserDefined1)
+  ;PrepareSingleInputs(ATIg_UserDefined2)
+  IF (ATBg_PowerSourceType==#FRONIUS_TPSI) THEN
+    PrepareSingleInputs(ATIg_HeartBeatTPSi)
+  ENDIF
+  PrepareSingleInputs(ATIg_GasFlowAvailable)
+  PrepareSingleInputs(ATIg_PowerSourceReady)
+  PrepareSingleInputs(ATIg_CollisionMonitoring)
+  ;PrepareSingleInputs(ATIg_WeldProcessActive)
+END ;(ATI_DefAllInputs()
+;*****************************************************************************************
+;Define the input numner of single group
+;*****************************************************************************************
+DEF PrepareSingleInputs(InpGrp1:OUT)
+DECL ATIg_Group_IN_T InpGrp1
+DECL INT  TableIndex,PhysicalInputNr,tmpATIg_IN_Max
+  tmpATIg_IN_Max=ATIg_IN_Max()
+  TableIndex=ABS(InpGrp1.Index)
+  IF ((TableIndex>0)AND(TableIndex<=tmpATIg_IN_Max)) THEN
+    IF (ATIg_IN[TableIndex].InNr>0)THEN
+      InpGrp1.InNr=ATIg_IN[TableIndex].InNr
+    ELSE
+      IF (InpGrp1.State==TRUE)THEN
+        InpGrp1.InNr=1025
+      ELSE
+        InpGrp1.InNr=1026
+      ENDIF
+    ENDIF
+  ELSE
+    IF (InpGrp1.State==TRUE)THEN
+      InpGrp1.InNr=1025
+    ELSE
+      InpGrp1.InNr=1026
+    ENDIF
+  ENDIF
+END ;(PrepareSingleInputs)
+;*****************************************************************************************
+;Calculates input numbers for fast waiting
+;input group independant from configuration
+;*****************************************************************************************
+GLOBAL DEF PrepareInputFields(InpGroup[]:OUT)
+DECL ATIg_Group_IN_T InpGroup[]
+DECL INT TableIndex
+DECL INT i, tmpATIg_IN_Max
+  tmpATIg_IN_Max=ATIg_IN_Max()
+  FOR i=1 TO 6
+    TableIndex=ABS(InpGroup[i].Index)
+    IF ((TableIndex>0)AND(TableIndex<=tmpATIg_IN_Max)) THEN
+      IF (ABS(ATIg_IN[TableIndex].InNr)>0) THEN
+        InpGroup[i].InNr=ABS(ATIg_IN[TableIndex].InNr)
+      ELSE ;pointer to $IN[0]
+        IF (InpGroup[i].State==TRUE) THEN
+          InpGroup[i].InNr=1025
+        ELSE
+          InpGroup[i].InNr=1026
+        ENDIF
+      ENDIF
+    ELSE ;no index in group
+      IF (InpGroup[i].State==TRUE) THEN
+        InpGroup[i].InNr=1025
+      ELSE
+        InpGroup[i].InNr=1026
+      ENDIF
+    ENDIF
+  ENDFOR
+END ;(PrepareInputFields)
+;*****************************************************************************************
+;Wait for input group with timeout
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATI_LimWaitForIO_Group(InpGrp[]:OUT,rTimeout:IN,Information:IN)
+DECL ATIg_Group_IN_T InpGrp[]
+DECL REAL rTimeout ;[s] ==> n * IPO [12ms]
+DECL ATBg_TypeOfInformation_T Information ;#SourcePoweredUp,#PeripheryRdy,#ArcProcessRdyToStartMove,#ArcSeamControl,#ArcProcessOver
+DECL INT LimitInIPO
+DECL INT i, Power
+DECL BOOL Sts[6] ;ATIg_MaximumGroupIndex
+DECL INT  Idx[6] ;ATIg_MaximumGroupIndex
+  LimitInIPO=rTimeout*1000
+  IF (LimitInIPO==0)THEN
+    LimitInIPO=1
+  ENDIF
+  FOR i=1 TO 6
+    IF (InpGrp[i].Index>0)THEN
+      Idx[i]=InpGrp[i].InNr
+      Sts[i]=InpGrp[i].State
+    ELSE
+      Sts[i]=TRUE
+      Idx[i]=1025 ;~TRUE
+    ENDIF
+  ENDFOR
+  $TIMER_STOP[ATBg_IoCheckTimer] = TRUE
+  $TIMER[ATBg_IoCheckTimer] = -ABS(LimitInIPO)
+  $TIMER_STOP[ATBg_IoCheckTimer] = FALSE
+  CONTINUE
+  WHILE (((Sts[1]<>$IN[Idx[1]])OR(Sts[2]<>$IN[Idx[2]])OR(Sts[3]<>$IN[Idx[3]])OR(Sts[4]<>$IN[Idx[4]])OR(Sts[5]<>$IN[Idx[5]])OR(Sts[6]<>$IN[Idx[6]])) AND NOT $TIMER_FLAG[ATBg_IoCheckTimer])
+    CONTINUE
+    WAIT SEC 0.012
+  ENDWHILE
+  $TIMER_STOP[ATBg_IoCheckTimer] = TRUE
+  SWITCH Information
+    CASE #SourcePoweredUp
+      ATBg_SourceErrorBits = 'B00000000'
+    CASE #PeripheryRdy
+      ATBg_PeripheryErrorBits = 'B00000000'
+    CASE #ArcProcessRdyToStartMove
+      ATBg_StartMoveErrorBits = 'B00000000'
+    CASE #ArcSeamControl
+      ATBg_WeldMovingErrorBits= 'B00000000'
+    CASE #ArcProcessOver
+      ATBg_ArcOffProcErrorBits = 'B00000000'
+  ENDSWITCH
+  IF ($TIMER_FLAG[ATBg_IoCheckTimer]) THEN
+    Power = 1
+    FOR i=1 TO 6
+      IF (Sts[i]<>$IN[Idx[i]]) THEN
+        SWITCH Information
+          CASE #SourcePoweredUp
+            ATBg_SourceErrorBits = ATBg_SourceErrorBits B_OR Power
+          CASE #PeripheryRdy
+            ATBg_PeripheryErrorBits = ATBg_PeripheryErrorBits B_OR Power
+          CASE #ArcProcessRdyToStartMove
+            ATBg_StartMoveErrorBits = ATBg_StartMoveErrorBits B_OR Power
+          CASE #ArcSeamControl
+            ATBg_WeldMovingErrorBits =ATBg_WeldMovingErrorBits  B_OR Power
+          CASE #ArcProcessOver
+            ATBg_ArcOffProcErrorBits = ATBg_ArcOffProcErrorBits B_OR Power
+        ENDSWITCH
+      ENDIF
+      Power=Power*2
+    ENDFOR
+  ENDIF
+  SWITCH Information
+    CASE #SourcePoweredUp
+      RETURN (ATBg_SourceErrorBits==0)
+    CASE #PeripheryRdy
+      RETURN (ATBg_PeripheryErrorBits==0)
+    CASE #ArcProcessRdyToStartMove
+      IF (ATEg_SimIgnError==TRUE) THEN
+        ATEg_SimIgnError=FALSE
+        ATBg_StartMoveErrorBits = 'B00000001'
+        RETURN FALSE
+      ELSE
+        RETURN (ATBg_StartMoveErrorBits==0)
+      ENDIF
+    CASE #ArcSeamControl
+      IF (ATEg_SimSeamError==TRUE) THEN
+        ATEg_SimSeamError=FALSE
+        ATBg_WeldMovingErrorBits = 'B00000001'
+        RETURN FALSE
+      ELSE
+        RETURN (ATBg_WeldMovingErrorBits==0)
+      ENDIF
+    CASE #ArcProcessOver
+      RETURN (ATBg_ArcOffProcErrorBits==0)
+  ENDSWITCH
+ENDFCT ;(ATI_LimWaitForIO_Group)
+;*****************************************************************************************
+;Wait for one input with timeout
+;Zero configuration creates the correct return value
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATI_LimitedWaitForInput(InpGrp1:OUT,rTimeout:IN,RequestedState:IN)
+DECL ATIg_Group_IN_T InpGrp1
+DECL REAL rTimeout ;[ms] ==> n * IPO [12ms]
+DECL BOOL RequestedState
+DECL INT LimitInIPO,TableIndex
+DECL INT i
+  LimitInIPO=rTimeout*1000
+  IF (LimitInIPO==0)THEN
+    LimitInIPO=1
+  ENDIF
+  TableIndex=ABS(InpGrp1.Index)
+  IF (TableIndex>0) THEN
+    IF (ABS(ATIg_IN[TableIndex].InNr)>0) THEN
+      InpGrp1.InNr=ABS(ATIg_IN[TableIndex].InNr)
+      IF InpGrp1.State==TRUE THEN
+        $TIMER_STOP[ATBg_IoCheckTimer] = TRUE
+        $TIMER[ATBg_IoCheckTimer] = -ABS(LimitInIPO)
+        $TIMER_STOP[ATBg_IoCheckTimer] = FALSE
+        CONTINUE
+        WHILE ((($IN[InpGrp1.InNr]<>RequestedState)) AND NOT $TIMER_FLAG[ATBg_IoCheckTimer])
+          IF (LimitInIPO>1)THEN
+            CONTINUE
+            WAIT SEC 0.012
+          ENDIF
+        ENDWHILE
+        $TIMER_STOP[ATBg_IoCheckTimer]=TRUE
+      ELSE
+        $TIMER_STOP[ATBg_IoCheckTimer] = TRUE
+        $TIMER[ATBg_IoCheckTimer] = -ABS(LimitInIPO)
+        $TIMER_STOP[ATBg_IoCheckTimer] = FALSE
+        CONTINUE
+        WHILE (($IN[InpGrp1.InNr]<>NOT(RequestedState)) AND NOT $TIMER_FLAG[ATBg_IoCheckTimer])
+          IF (LimitInIPO>1)THEN
+            CONTINUE
+            WAIT SEC 0.012
+          ENDIF
+        ENDWHILE
+        $TIMER_STOP[ATBg_IoCheckTimer]=TRUE
+      ENDIF
+      RETURN NOT ($TIMER_FLAG[ATBg_IoCheckTimer])
+    ELSE
+      RETURN(TRUE)
+    ENDIF
+  ELSE
+    RETURN(TRUE)
+  ENDIF
+ENDFCT ;(ATI_LimitedWaitForInput)
+;*****************************************************************************************
+;Get state of signal independant from configuration
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATI_GetInput(InpGrp1:OUT)
+DECL ATIg_Group_IN_T InpGrp1
+DECL INT  TableIndex,PhysicalInputNr
+  TableIndex=ABS(InpGrp1.Index)
+  IF (TableIndex>0) THEN
+    IF (ATIg_IN[TableIndex].InNr>0)THEN
+      PhysicalInputNr=ATIg_IN[TableIndex].InNr
+      InpGrp1.InNr=PhysicalInputNr
+      RETURN($IN[PhysicalInputNr])
+    ELSE
+      RETURN(InpGrp1.State);good state as defined
+    ENDIF
+  ELSE
+    RETURN(InpGrp1.State);good state as defined
+  ENDIF
+ENDFCT ;(ATI_GetInput)
+;*****************************************************************************************
+;Get sum state of complete group (ANDs)
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATI_GetGroup(InpGrp[]:OUT)
+DECL ATIg_Group_IN_T InpGrp[]
+DECL INT i
+DECL BOOL Sts[6]
+DECL INT  Idx[6]
+  FOR i=1 TO 6
+    IF (InpGrp[i].Index>0)THEN
+      Idx[i]=InpGrp[i].InNr
+      Sts[i]=InpGrp[i].State
+    ELSE
+      Sts[i]=TRUE
+      Idx[i]=1025 ;~TRUE
+    ENDIF
+  ENDFOR
+  RETURN((Sts[1]==$IN[Idx[1]])AND(Sts[2]==$IN[Idx[2]])AND(Sts[3]==$IN[Idx[3]])AND(Sts[4]==$IN[Idx[4]])AND(Sts[5]==$IN[Idx[5]])AND(Sts[6]==$IN[Idx[6]]))
+ENDFCT ;(ATI_GetGroup)
+;*****************************************************************************************
+;Check of periphery if ready
+;Call of ATI_CheckControllerReady()
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATI_PeripheryReadyToWeld()
+DECL BOOL bTemp
+  bTemp=ATI_CheckControllerReady(ATIg_WeldPeriphery[],0.0,#PeripheryRdy)
+  RETURN(bTemp)
+ENDFCT ;(ATI_PeripheryReadyToWeld)
+;*****************************************************************************************
+;Direct check of periphery if ready
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATI_CheckControllerReady(InpGrp[]:OUT,rTimeout:IN,Information:IN)
+DECL ATIg_Group_IN_T InpGrp[]
+DECL REAL rTimeout ;[ms] ==> n * IPO [12ms]
+DECL ATBg_TypeOfInformation_T Information ;#SourcePoweredUp,#PeripheryRdy,#ArcProcessRdyToStartMove,#ArcSeamControl,#ArcProcessOver <==Compatibility
+DECL INT LimitInIPO
+DECL INT i
+DECL BOOL Sts[6] ;ATBg_MaximumGroupIndex
+DECL INT  Idx[6] ;ATBg_MaximumGroupIndex
+  LimitInIPO=rTimeout*1000
+  FOR i=1 TO 6
+    IF (InpGrp[i].Index>0)THEN
+      Idx[i]=InpGrp[i].InNr
+      Sts[i]=InpGrp[i].State
+    ELSE
+      Sts[i]=TRUE
+      Idx[i]=1025 ;~TRUE
+    ENDIF
+  ENDFOR
+  ;Loop <= Validation of return value is generated by ATBg_PeripheryErrorBits
+  $TIMER_STOP[ATBg_IoCheckTimer] = TRUE
+  $TIMER[ATBg_IoCheckTimer] = -ABS(LimitInIPO)
+  $TIMER_STOP[ATBg_IoCheckTimer] = FALSE
+  CONTINUE
+  WHILE (((Sts[1]<>$IN[Idx[1]])OR(Sts[2]<>$IN[Idx[2]])OR(Sts[3]<>$IN[Idx[3]])OR(Sts[4]<>$IN[Idx[4]])OR(Sts[5]<>$IN[Idx[5]])OR(Sts[6]<>$IN[Idx[6]]))AND NOT $TIMER_FLAG[ATBg_IoCheckTimer])
+    CONTINUE
+    WAIT SEC 0.012
+  ENDWHILE
+  $TIMER_STOP[ATBg_IoCheckTimer] = TRUE
+  ATBg_PeripheryErrorBits = 'B00000000'
+  IF ($TIMER_FLAG[ATBg_IoCheckTimer]) THEN
+    IF (Sts[1]<>$IN[Idx[1]]) THEN
+      ATBg_PeripheryErrorBits = ATBg_PeripheryErrorBits B_OR 'B00000001'
+    ENDIF
+    IF (Sts[2]<>$IN[Idx[2]]) THEN
+      ATBg_PeripheryErrorBits = ATBg_PeripheryErrorBits B_OR 'B00000010'
+    ENDIF
+    IF (Sts[3]<>$IN[Idx[3]]) THEN
+      ATBg_PeripheryErrorBits = ATBg_PeripheryErrorBits B_OR 'B00000100'
+    ENDIF
+    IF (Sts[4]<>$IN[Idx[4]]) THEN
+      ATBg_PeripheryErrorBits = ATBg_PeripheryErrorBits B_OR 'B00001000'
+    ENDIF
+    IF (Sts[5]<>$IN[Idx[5]]) THEN
+      ATBg_PeripheryErrorBits = ATBg_PeripheryErrorBits B_OR 'B00010000'
+    ENDIF
+    IF (Sts[6]<>$IN[Idx[6]]) THEN
+      ATBg_PeripheryErrorBits = ATBg_PeripheryErrorBits B_OR 'B00100000'
+    ENDIF
+  ENDIF
+  RETURN (ATBg_PeripheryErrorBits==0)
+ENDFCT ;(ATI_CheckControllerReady)
+;***************************************************************
+;[BurnBack] SetBurnBackArcLinkXt
+;***************************************************************
+GLOBAL DEF SetBurnBackArcLinkXt()
+DECL REAL dBurnBackTime
+  IF (ATBg_PowerSourceType == #ARCLINKXT) THEN
+    SWITCH VARSTATE("ATBg_ActCraterSet.BurnBackTime")
+      CASE #UNKNOWN,#DECLARED
+        dBurnBackTime = 0.012
+      DEFAULT
+        IF (ATBg_ActCraterSet.BurnBackTime < 0.012) THEN
+          dBurnBackTime = 0.012
+        ELSE
+          dBurnBackTime=(ATBg_ActCraterSet.BurnBackTime)
+        ENDIF
+    ENDSWITCH
+    dBurnBackTime = dBurnBackTime - 0.004 ;4ms compensation driver cycle
+    WF_SetOneSignal(ATOg_Burnback,#ResetIO)
+    PULSE($OUT[ATOg_Out[ATOg_BurnBack.Index].OutNr], ATOg_BurnBack.State, dBurnBackTime)
+    ArcTechDiag("BurnBackStart", 0)
+  ENDIF
+END
+;***************************************************************
+;[BurnBack] WaitBurnBackArcLinkXt
+;***************************************************************
+GLOBAL DEF BurnBackEndArcLinkXt()
+DECL REAL dBurnBackTime
+  IF (ATBg_PowerSourceType == #ARCLINKXT) THEN
+    IF ((ATBg_ErrorState == #Nothing) OR (ATBg_ErrorState == #InputError)) THEN
+      SWITCH VARSTATE("ATBg_ActCraterSet.BurnBackTime")
+        CASE #UNKNOWN,#DECLARED
+          dBurnBackTime = 0.012
+        DEFAULT
+          IF (ATBg_ActCraterSet.BurnBackTime < 0.012) THEN
+            dBurnBackTime = 0.012
+          ELSE
+            dBurnBackTime=(ATBg_ActCraterSet.BurnBackTime)
+          ENDIF
+      ENDSWITCH
+      WAIT SEC dBurnBackTime - 0.004 ;4ms compensation driver cycle
+      WF_SetOneSignal(ATOg_Burnback,#ResetIO)
+      ArcTechDiag("BurnBackDone", 0)
+    ENDIF
+  ENDIF
+END
+;***************************************************************
+;[WireFree] Check if Wire is free if FALSE=then BurnFree
+;***************************************************************
+GLOBAL DEF ATI_BurnFreeIfNeeded()
+DECL BOOL BurnFreeSucces
+    BurnFreeSucces = FALSE
+    ArcTechDiag("BurnFreeCall", 0)
+    IF (ATBg_BFActive == TRUE) THEN
+      ATBg_BurnFreeActive = TRUE
+      IF (IsWireFree() == FALSE) THEN
+          BurnFreeSucces = ATB_BurnFree()
+          IF (BurnFreeSucces == FALSE) THEN 
+            ATB_ManuallyCutOffWire()
+          ENDIF
+      ENDIF
+    ELSE
+      ATB_ManuallyCutOffWire()
+    ENDIF
+    ATBg_BurnFreeActive = FALSE
+END
+;***************************************************************
+;[WireFree] Check if Wire is free with Msg
+;***************************************************************
+GLOBAL DEF ATB_ManuallyCutOffWire()
+  WAIT SEC 0.1
+  WHILE (IsWireFree()==FALSE)
+    ATOg_SetOneSignal(ATOg_BurnFreeFault,#SetIO)
+    ArcTechDiag("ManuallyCutOffWireNecessary", 0)
+    ArcMsgQuit("ManuallyCutOffWireNecessary","ATB", ,ATBg_SeamName[],10311,Opt_VLSTOP_LOG)
+    ATOg_SetOneSignal(ATOg_BurnFreeFault,#ResetIO)
+  ENDWHILE
+END
+;***************************************************************
+;[WireFree] Check condition for burn free
+;           OR state change from Hot => Cold
+;***************************************************************
+DEFFCT BOOL WF_BurnFreeCondition()
+DECL BOOL bTemp
+  bTemp = ((ATBg_GhostMode==FALSE) AND (ATBg_DryRun==FALSE) AND (ATBg_ColdSeam==FALSE))
+  SWITCH  $MODE_OP
+    CASE #EX
+      RETURN ((bTemp) AND (ATI_GetInput(ATIg_KeySwitchProcess)))
+    CASE #AUT
+      RETURN ((bTemp) AND ((ATI_GetInput(ATIg_KeySwitchProcess)) OR (ATBg_StatusKey_Hot==TRUE)))
+    CASE #T1,#T2
+      RETURN ((bTemp) AND (ATBg_StatusKey_Hot==TRUE))
+  ENDSWITCH
+ENDFCT
+;***************************************************************
+;[WireFree] Check if Wire is Free
+;***************************************************************
+GLOBAL DEFFCT BOOL IsWireFree()
+DECL BOOL tmpReturn
+DECL REAL lincolnWaitTime
+  lincolnWaitTime = 0.06 ;60ms
+  tmpReturn = TRUE
+  IF (WF_BurnFreeCondition()) THEN
+    SWITCH ATBg_PowerSourceType
+      CASE #ARCLINKXT
+        ;WAIT FOR ATI_GetInput(ATIg_PowerSourceReady) == TRUE
+        IF (ATBg_ActCraterSet.PostflowTime < lincolnWaitTime) THEN
+          WAIT SEC lincolnWaitTime - ATBg_ActCraterSet.PostflowTime
+        ENDIF
+        WF_SetOneSignal(ATOg_WireDetectRequest,#SetIO)
+        ;WAIT FOR ATI_GetInput(ATIg_PowerSourceReady) == FALSE
+        WAIT SEC lincolnWaitTime
+        tmpReturn = ATI_GetInput(ATIg_WireFreeDetection)
+        WF_SetOneSignal(ATOg_WireDetectRequest,#ResetIO)
+        ;WAIT FOR ATI_GetInput(ATIg_PowerSourceReady) == TRUE
+      DEFAULT
+        WF_SetOneSignal(ATOg_WireDetectRequest,#ResetIO)
+        ATBgWFDiag[1]=WF_WaitForInTout(ATIg_WireFreeDetection,ATIg_WireFreeDetection.State, ATBg_WireFreeTimeout,tmpReturn)
+    ENDSWITCH
+  ENDIF
+  RETURN (tmpReturn)
+ENDFCT
+;***************************************************************
+;[WireFree] Burning the wire when contact on part
+;***************************************************************
+GLOBAL DEFFCT BOOL ATB_BurnFree( )
+DECL INT BurnFreeCounter
+DECL REAL ArcLinkWaitTime
+    BurnFreeCounter=0
+    REPEAT
+      ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+      ATO_SetArcMode(ATBg_BFModeIndex);Set arc mode for burnfree param set
+      ATA_SetParameters(#ArcOff,ATBg_BFModeIndex,ATBg_ActStartSet,ATBg_ActWeldSet,AC_WBurn);Set burnfree params as crater params
+      BurnFreeCounter = BurnFreeCounter + 1
+      WAIT SEC 0.2 ;Settling time for welding source
+      IF ((RobotReadyForWeld()) AND (ATI_PeripheryReadyToWeld())) THEN ;At ignitions and arc off commands
+        IF (ATBg_PowerSourceType==#ARCLINKXT) THEN
+          WF_SetOneSignal(ATOg_Burnback,#SetIO) ;No Wire Feed
+          WAIT SEC 0.05
+          ;ATOg_SetOneSignal(ATOg_GasActive,#SetIO)
+          ATOg_SetIO_Group(ATOg_GasPreFlowStart[],#AdvanceStop)
+          IF (ATBg_BFPreFlowTime > 0.012) THEN
+            WAIT SEC ATBg_BFPreFlowTime
+          ELSE
+            WAIT SEC 0.012
+          ENDIF
+          ATOg_SetIO_Group(ATOg_WeldStart[],#AdvanceStop)
+          IF (ATBg_BFIgnTime > 0.012) THEN
+            WAIT SEC ATBg_BFIgnTime
+          ELSE
+            WAIT SEC 0.012
+          ENDIF
+          WF_SetOneSignal(ATOg_Burnback,#ResetIO)
+          ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+          WAIT SEC 0.012
+          ;ATOg_SetOneSignal(ATOg_GasActive,#ResetIO)
+          ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop)
+        ELSE
+          WF_SetGroupSignalPulse(ATOg_WeldStart[],ATBg_BFIgnTime)
+          ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+        ENDIF
+        ArcTechDiag("BurnFreeMechanismStarted", 0)
+        ArcMsgNotify("BurnFreeMechanismStarted","ATB", ,ATBg_SeamName[] ,10271,Opt_NOVLSTOP_LOG)
+      ENDIF
+      IF IsWireFree() THEN
+         ArcTechDiag("BurnFreeDone", 0)
+         RETURN TRUE
+      ENDIF
+    UNTIL (BurnFreeCounter>=ATBg_BFMaxIgn)
+    RETURN FALSE
+ENDFCT ;(ATB_BurnFree)
+;***************************************************************
+;[WireFree] Time Out Delay
+;***************************************************************
+DEFFCT INT WF_Tout(tOut :IN)
+DECL REAL tOut
+DECL INT MtOut
+  tOut=ABS(tOut)
+  IF (tOut>0) THEN
+    RETURN ($ROB_TIMER+(tOut*1000))
+  ELSE
+    RETURN ($ROB_TIMER)
+  ENDIF
+ENDFCT
+;***************************************************************
+;[WireFree] Set Start Group Signal
+;***************************************************************
+DEF WF_SetGroupSignalPulse(tmpATOg_Group_OUT_T[] :OUT,setTime :IN)
+DECL ATOg_Group_OUT_T tmpATOg_Group_OUT_T[]
+DECL REAL setTime
+DECL INT tmpI
+  FOR tmpI=1 TO 6
+    IF (WF_CheckOutStruct(tmpATOg_Group_OUT_T[tmpI]) == TRUE) THEN
+      PULSE($OUT[ATOg_Out[tmpATOg_Group_OUT_T[tmpI].Index].OutNr],tmpATOg_Group_OUT_T[tmpI].State,setTime)
+    ENDIF
+  ENDFOR
+  WAIT SEC setTime
+END
+;***************************************************************
+;[WireFree] Set One Signal
+;***************************************************************
+GLOBAL DEF WF_SetOneSignal(tmpATOg_Group_OUT_T :OUT,TargetState :IN)
+DECL ATOg_Group_OUT_T tmpATOg_Group_OUT_T
+DECL ATOg_TargetState_T TargetState
+  IF (WF_CheckOutStruct(tmpATOg_Group_OUT_T) == TRUE) THEN
+    SWITCH TargetState
+      CASE #SetIO
+        $OUT[ATOg_Out[tmpATOg_Group_OUT_T.Index].OutNr]=tmpATOg_Group_OUT_T.State
+      CASE #ResetIO
+        $OUT[ATOg_Out[tmpATOg_Group_OUT_T.Index].OutNr]=ATOg_Out[tmpATOg_Group_OUT_T.Index].InitState
+    ENDSWITCH
+  ENDIF
+END
+;***************************************************************
+;[WireFree] Wait for Struct input with check configuration status
+;***************************************************************
+GLOBAL DEFFCT ATBgWFDiag_T WF_WaitForInTout(tmpATIg_Group_IN_T :IN, tmpStatus :IN, tmpTime :IN, tmpEnable: OUT)
+DECL BOOL tmpStatus,tmpEnable
+DECL ATBgWFDiag_T tmpReturn
+DECL REAL tmpTime,tmpMemTime
+DECL ATIg_Group_IN_T tmpATIg_Group_IN_T
+  tmpReturn={WaitNr 0,State FALSE,StepOk FALSE ,StepTimeOut 0.0}
+  IF (WF_CheckInStruct(tmpATIg_Group_IN_T) == TRUE) THEN
+    IF (tmpEnable == TRUE) THEN
+      tmpMemTime=WF_Tout(tmpTime)
+      tmpTime=tmpTime*1000
+      WAIT FOR ($IN[ATIg_IN[tmpATIg_Group_IN_T.Index].InNr] == tmpStatus)OR(($ROB_TIMER > tmpMemTime)OR(tmpTime > $ROB_TIMER))
+      IF ($IN[ATIg_IN[tmpATIg_Group_IN_T.Index].InNr] == tmpStatus) THEN
+        tmpReturn.StepOk=TRUE
+      ELSE
+        tmpEnable=FALSE
+      ENDIF
+      tmpReturn.StepTimeOut=(tmpTime - ABS($ROB_TIMER-tmpMemTime))/1000
+      tmpReturn.WaitNr=ATIg_IN[tmpATIg_Group_IN_T.Index].InNr
+      tmpReturn.State=tmpStatus
+    ENDIF
+  ENDIF
+  RETURN (tmpReturn)
+ENDFCT
+;***************************************************************
+;[WireFree] Check if Input structure is configurated
+;***************************************************************
+GLOBAL DEFFCT BOOL WF_CheckInStruct(tmpATIg_Group_IN_T :IN)
+DECL ATIg_Group_IN_T tmpATIg_Group_IN_T
+DECL BOOL tmpReturn
+  tmpReturn=FALSE
+  IF (tmpATIg_Group_IN_T.Index > 0) THEN
+    IF ((ATIg_IN[tmpATIg_Group_IN_T.Index].InNr) > 0) THEN
+      SWITCH (ATIg_IN[tmpATIg_Group_IN_T.Index].InNr)
+        CASE 1025,1026
+        DEFAULT
+          tmpReturn=TRUE
+      ENDSWITCH
+    ENDIF
+  ENDIF
+  RETURN (tmpReturn)
+ENDFCT
+;***************************************************************
+;[WireFree] Check if Output structure is configurated
+;***************************************************************
+GLOBAL DEFFCT BOOL WF_CheckOutStruct(tmpATOg_Group_OUT_T :IN)
+DECL ATOg_Group_OUT_T tmpATOg_Group_OUT_T
+DECL BOOL tmpReturn
+  tmpReturn=FALSE
+  IF (tmpATOg_Group_OUT_T.Index > 0) THEN
+    IF ((ATOg_OUT[tmpATOg_Group_OUT_T.Index].OutNr) > 0) THEN
+      SWITCH (ATOg_OUT[tmpATOg_Group_OUT_T.Index].OutNr)
+        CASE 1025,1026
+        DEFAULT
+          tmpReturn=TRUE
+      ENDSWITCH
+    ENDIF
+  ENDIF
+  RETURN (tmpReturn)
+ENDFCT

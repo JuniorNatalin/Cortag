@@ -1,0 +1,95 @@
+&ACCESS  R
+&COMMENT ATB Weaving General
+DEF  ArcWeaveGeneral()
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;-------------------------
+;Clear of activation flags
+;-------------------------
+GLOBAL DEF WTC_PLC_Init()
+;FOLD Flags to avoid an access to weave generators
+  WTCg_WeaveSwitchedActive=FALSE
+  WTCg_Weave_C_Active=FALSE
+;ENDFOLD
+END ;(WTC_PLC_Init)
+;-----------------------------------------------
+;Notify message at requested CP Weaving 
+;at inactive weave option
+;Check of $TECH_OPT adjustment 
+;Check of correct indexes of function generators
+;Set actual defined pattern to #None
+;-----------------------------------------------
+GLOBAL DEF WTC_CP_WeaveInit()
+;FOLD Initialization and checks
+  IF NOT(WTC_WeaveOption) THEN
+    ArcMsgNotify("WeaveCPOptionNotavailable","WTC",,,10100,Opt_NOVLSTOP_LOG)
+  ELSE
+    IF ($TECH_OPT==FALSE) THEN
+      ArcMsgNotify("TechOptionNotSet","WTC",,,10101,Opt_NOVLSTOP_LOG)
+    ENDIF
+    IF ((MechGenerator1<=0)OR(MechGenerator2<=0))THEN
+      ArcMsgQuit("NumbersOfFunctiongeneratorsZeroOrInvalid","WTC",,,10112,Opt_VLSTOP_LOG)
+    ENDIF
+    WTCg_Weave_C_Active=FALSE
+    WTCg_WeaveSwitchedActive=FALSE
+  ENDIF
+;ENDFOLD
+END ;(WTC_CP_WeaveInit)
+;-----------------------------------------------
+;Activates or unactivates weaving upon main or advance task
+;-----------------------------------------------
+GLOBAL DEF WTCg_SwitchMechWeaving(WeaveCmd:IN)
+;FOLD Details;%{PE}
+;FOLD Declarations
+DECL WTCg_WeaveCmd_T  WeaveCmd        ;#OffInAdvance,#OffInMainTask,#OnInAdvance,#OnInMainTask
+;ENDFOLD
+ IF ATBg_WeavingEnabled==TRUE THEN
+   IF ATBg_InSplineBlock==FALSE THEN
+     SWITCH WeaveCmd
+       CASE #InterruptOn
+         WTC_SwitchMechWeaving(#InterruptOn,WTCg_ActualWeaveSet)
+       CASE #InterruptOff
+         WTC_SwitchMechWeaving(#InterruptOff,WTCg_ActualWeaveSet)
+       CASE #OffInAdvance
+         WTC_SwitchMechWeaving(#OffInAdvance,WTCg_ActualWeaveSet)
+       CASE #OffInMainTask
+         WTC_SwitchMechWeaving(#OffInMainTask,WTCg_ActualWeaveSet)
+       CASE #OffByBlockSelect
+         WTC_SwitchMechWeaving(#OffByBlockSelect,WTCg_ActualWeaveSet)
+       CASE #OnInAdvance
+         WTC_SwitchMechWeaving(#OnInAdvance,WTCg_ActualWeaveSet)          
+       CASE #OnInMainTask
+         WTC_SwitchMechWeaving(#OnInMainTask,WTCg_ActualWeaveSet)
+       CASE #OnlineChange
+         WTC_SwitchMechWeaving(#OnlineChange,WTCg_ActualWeaveSet)
+       DEFAULT
+         ArcMsgQuit("NoSuitableWeaveCmd","WTC",,ATBg_SeamName[],10109,Opt_VLSTOP_LOG)
+     ENDSWITCH
+    ELSE
+     SWITCH WeaveCmd
+       CASE #InterruptOn
+         WTC_SMechSPLWeaving(#InterruptOn,WTCg_ActualWeaveSet)
+       CASE #InterruptOff
+         WTC_SMechSPLWeaving(#InterruptOff,WTCg_ActualWeaveSet)
+       CASE #OffInAdvance
+         ArcMsgQuit("NoSuitableWeaveCmd","WTC",,ATBg_SeamName[],10109,Opt_VLSTOP_LOG)
+       CASE #OffInMainTask
+         WTC_SMechSPLWeaving(#OffInMainTask,WTCg_ActualWeaveSet)
+       CASE #OffByBlockSelect
+         WTC_SMechSPLWeaving(#OffByBlockSelect,WTCg_ActualWeaveSet)
+       CASE #OnInAdvance
+         ArcMsgQuit("NoSuitableWeaveCmd","WTC",,ATBg_SeamName[],10109,Opt_VLSTOP_LOG)          
+       CASE #OnInMainTask
+         WTC_SMechSPLWeaving(#OnInMainTask,WTCg_ActualWeaveSet)
+       CASE #OnlineChange
+         WTC_SMechSPLWeaving(#OnlineChange,WTCg_ActualWeaveSet)
+       DEFAULT
+         ArcMsgQuit("NoSuitableWeaveCmd","WTC",,ATBg_SeamName[],10109,Opt_VLSTOP_LOG)
+     ENDSWITCH
+    ENDIF
+ ENDIF
+;ENDFOLD
+END

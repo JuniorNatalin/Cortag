@@ -1,0 +1,5 @@
+&ACCESS  R
+&COMMENT ATB String Library
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  StringLib
+ENDDAT

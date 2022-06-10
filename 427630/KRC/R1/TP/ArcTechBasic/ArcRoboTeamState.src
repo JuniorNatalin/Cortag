@@ -1,0 +1,229 @@
+&ACCESS  R
+&COMMENT ATB Robo Team State
+DEF  ArcRoboTeamState( )
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END 
+;*****************************************************************************************
+;[ROUTINE] SetStateRemote
+;*****************************************************************************************
+GLOBAL DEF SetStateRemote(State:OUT)
+DECL ArcState state
+END
+;*****************************************************************************************
+;[ROUTINE] AnalayseRemoteErrors
+;*****************************************************************************************
+GLOBAL DEF AnalayseRemoteErrors(State:IN, NextState:OUT)
+DECL ArcState nextstate
+DECL ArcState state
+END
+;*****************************************************************************************
+;[ROUTINE] ATA_CheckHotState
+;*****************************************************************************************
+GLOBAL DEF ATA_CheckHotState(IsIgnition:IN)
+DECL BOOL IsIgnition
+END
+;*****************************************************************************************
+;[ROUTINE] SetRemoteError
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL SetRemoteError(ErrorState:IN)
+DECL ArcErrorState ErrorState
+   RETURN(FALSE)
+ENDFCT  
+;*****************************************************************************************
+;* Interface routine to find an single 
+;* Robot in standalone configuration
+;[ROUTINE] GetRobCompoundState
+;*****************************************************************************************
+GLOBAL DEFFCT INT GetRobCompoundState()
+   RETURN(1)
+ENDFCT
+;*****************************************************************************************
+;[ROUTINE] SetRemoteCondStopActive
+;*****************************************************************************************
+GLOBAL DEF SetRemoteCondStopActive()
+END
+;*****************************************************************************************
+;[ROUTINE] SetRmdWaitIgnitionTime
+;*****************************************************************************************
+GLOBAL DEF SetRmdWaitIgnitionTime()
+END
+;*****************************************************************************************
+;[ROUTINE] SetRmdWaitGasFlowTime
+;*****************************************************************************************
+GLOBAL DEF SetRmdWaitGasFlowTime()
+END
+;*****************************************************************************************
+;[ROUTINE] WaitRemoteDiffIgnitTime
+;*****************************************************************************************
+GLOBAL DEF WaitRemoteDiffIgnitTime()
+END
+;*****************************************************************************************
+;[ROUTINE] WaitRemoteDiffGasTime
+;*****************************************************************************************
+GLOBAL DEF WaitRemoteDiffGasTime()
+END
+;*****************************************************************************************
+;[ROUTINE] HandleRemoteMoveFwd
+;*****************************************************************************************
+GLOBAL DEF HandleRemoteMoveFwd()
+END
+;*****************************************************************************************
+;[ROUTINE] HandleRemoteStart
+;*****************************************************************************************
+GLOBAL DEF HandleRemoteStart()
+END
+;*****************************************************************************************
+;[ROUTINE] DeployErrStrategy
+;*****************************************************************************************
+GLOBAL DEF DeployErrStrategy(StartErrSet :OUT, WeldErrSet :OUT)
+DECL ATBg_S_Err_T StartErrSet
+DECL ATBg_W_Err_T WeldErrSet 
+END
+;*****************************************************************************************
+;[ROUTINE] DeployMasterErrStrategy
+;*****************************************************************************************
+GLOBAL DEF DeployMasterErrStrategy()
+END
+;*****************************************************************************************
+;[ROUTINE] SetSwiErrStrategy
+;*****************************************************************************************
+GLOBAL DEFFCT ATBg_W_Err_T SetSwiErrStrategy(WeldErrSet:IN)
+DECL ATBg_W_Err_T WeldErrSet
+   RETURN(WeldErrSet)
+ENDFCT 
+;*****************************************************************************************
+;[ROUTINE] ATA_SaveDatas
+;*****************************************************************************************
+GLOBAL DEF ATA_SaveDatas(ATA_IsMyError:IN, ATA_IsIgnitionError:IN, ATA_NoErrorUntilSeamEnd:IN)
+BOOL ATA_IsMyError, ATA_IsIgnitionError, ATA_NoErrorUntilSeamEnd
+END
+;*****************************************************************************************
+;[ROUTINE] ATA_HandleInputError
+;*****************************************************************************************
+GLOBAL DEF ATA_HandleInputError()
+END
+;*****************************************************************************************
+;[ROUTINE] ATA_Sync
+;*****************************************************************************************
+GLOBAL DEF ATA_Sync()
+END
+;*****************************************************************************************
+;[ROUTINE] ATA_HandleSeamErrorOn
+;*****************************************************************************************
+GLOBAL DEF ATA_HandleSeamErrorOn()
+END
+;*****************************************************************************************
+;[ROUTINE] ATA_HandleSeamErrorOff
+;*****************************************************************************************
+GLOBAL DEF ATA_HandleSeamErrorOff()
+END
+;*****************************************************************************************
+;[ROUTINE] ATA_Restart
+;*****************************************************************************************
+GLOBAL DEF ATA_Restart()
+END
+;*****************************************************************************************
+;[ROUTINE] BroadcastedError
+;*****************************************************************************************
+GLOBAL DEF BroadcastedError()
+;FOLD Declaration
+DECL ARCSTATE Res
+;ENDFOLD
+;FOLD Implementation
+   ;INTERRUPT OFF ATEg_ErrRoboTeam_ISR_NR
+   BRAKE
+   HALT
+   ;INTERRUPT ON ATEg_ErrRoboTeam_ISR_NR
+;ENDFOLD
+END
+;*****************************************************************************************
+;[Error recovery] 
+;*****************************************************************************************
+;[Error recovery] Initialization all used signals
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_Init()
+   ATAg_ER_WeldDone=FALSE
+   ATAg_ER_NRobotInGroup=0
+   ATAg_ER_ChkRepeatGroup=TRUE
+END
+;*****************************************************************************************
+;[Error recovery] On Service Position Retry
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_Retry()
+   ATA_ER_Init()
+END
+;*****************************************************************************************
+;[Error recovery] On Service Position Abort
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_Abort()
+   ATA_ER_Init()
+END
+;*****************************************************************************************
+;[Error recovery] On Service GoTo Next Seam
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_NextSeam()
+   ATA_ER_Init()
+END
+;*****************************************************************************************
+;[Error recovery] Routine on Service position
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_ServicePos()
+END
+;*****************************************************************************************
+;[Error recovery] Show Message on select line inside repeat until group
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_ForceExit()
+END
+;*****************************************************************************************
+;[Error recovery] Routine build string error on service position
+;*****************************************************************************************
+GLOBAL DEFFCT CHAR[128] ATA_ER_DialogOnInspect()
+DECL CHAR TmpChar[128]
+DECL BOOL TmpRes
+   TmpRes=StrClear(TmpChar[])
+   RETURN TmpChar[]
+ENDFCT
+;*****************************************************************************************
+;[Error recovery] Routine On "ArcOn" flag position,name,line...
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_BeginMemPoint(bVelSwitch:IN) 
+DECL BOOL bVelSwitch
+ATAg_ER_BeginMemPoint=FALSE
+END
+;*****************************************************************************************
+;[Error recovery] Reset Variables
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_Reset()
+END
+;*****************************************************************************************
+;[Error recovery] Routine on end of group check ModeOp to-do
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATA_ER_ChkSeamGroup(TmpInt :IN)
+DECL INT TmpInt
+   ATAg_ER_ChkRepeatGroup=FALSE
+   RETURN FALSE
+ENDFCT
+;*****************************************************************************************
+;[Error recovery] check if Error is present on external Robot
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_GroupProgSync(TmpStr[] :IN, TmpNum :IN)
+DECL INT TmpNum
+DECL CHAR TmpStr[]
+ATAg_ER_ExtError=FALSE
+ATAg_ER_IsMyError=FALSE
+SYNCCMD(#ProgSync, TmpStr[], TmpNum)
+END
+;*****************************************************************************************
+;[Error recovery] check if Plc Selection is same an all Robots
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL ATA_ER_PLCSignalSync()
+RETURN TRUE
+ENDFCT
+;*****************************************************************************************
+;[Error recovery] check if Sensore is Active
+;*****************************************************************************************
+GLOBAL DEF ATA_ER_ChkIfSensorActive()
+END

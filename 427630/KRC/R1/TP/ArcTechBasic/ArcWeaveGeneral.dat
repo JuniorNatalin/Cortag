@@ -1,0 +1,27 @@
+&ACCESS  R
+&COMMENT ATB Weaving General
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  ArcWeaveGeneral PUBLIC
+;FOLD Enum und Structures
+GLOBAL ENUM WTCg_WeavePattern_T None,Trapecoid,Triangle,UnsymetricTrapecoid,Spiral
+GLOBAL ENUM WTCg_WeaveCmd_T OffInAdvance,OffInMainTask,OnInAdvance,OnInMainTask,SetParameterInAdvance,SetParameterInMainTask,OffByBlockSelect,OnlyDefinition,InterruptOn,InterruptOff,OnlineChange
+GLOBAL STRUC WTCg_WeaveDefinition_T WTCg_WeavePattern_T Pattern,REAL Length,Amplitude,Angle
+;ENDFOLD
+;FOLD Options
+DECL GLOBAL BOOL WTC_WeaveOption=TRUE ;Default:(TRUE)
+DECL GLOBAL BOOL WTCg_BlockWeaving=FALSE
+;ENDFOLD
+;FOLD Resources
+;FOLD Functiongenerators
+DECL GLOBAL INT MechGenerator1=1 ;Mechanical function generator1
+DECL GLOBAL INT MechGenerator2=2 ;Mechanical function generator2
+;ENDFOLD
+;ENDFOLD
+;FOLD System
+DECL GLOBAL WTCg_WeaveDefinition_T WTCg_ActualWeaveSet={Pattern #None,Length 4.00000,Amplitude 2.00000,Angle 0.0}
+DECL GLOBAL WTCg_WeaveDefinition_T WTCg_ActWeaveSetInAdv={Pattern #None,Length 4.00000,Amplitude 2.00000,Angle 0.0}
+DECL GLOBAL WTCg_WeaveDefinition_T WVDEFAULT={Pattern #None,Length 4.00000,Amplitude 2.00000,Angle 0.0}
+DECL GLOBAL BOOL WTCg_WeaveSwitchedActive=FALSE ;Always independant from advance and triggers and interruptds
+DECL GLOBAL BOOL WTCg_Weave_C_Active=FALSE ;Submit task
+;ENDFOLD
+ENDDAT

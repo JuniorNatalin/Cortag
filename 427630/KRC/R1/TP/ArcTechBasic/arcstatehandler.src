@@ -1,0 +1,832 @@
+&ACCESS  R
+&COMMENT ATB StateHandler
+DEF  ArcStateHandler( )
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;*****************************************************************************************
+;Sets the ArcState
+;*****************************************************************************************
+GLOBAL DEFFCT ArcState SetState(Actstate:in)
+;FOLD Declaration
+DECL ArcState ActState
+DECL ArcState nextState
+DECL REAL dPurgeTime, dBurnBackTime
+DECL INT i
+DECL ATEg_ErrorDecision_T retValue
+;ENDFOLD
+;FOLD Implementation  
+ SWITCH ActState
+ ;FOLD ArcOn Sequenze  
+  CASE #Init
+    ArcTechDiag("SM_Init", 0)
+    ATBg_IgnoreError=TRUE
+    ATBg_IgnRestartCounter=0
+    ATBg_IgnitionFailed=FALSE
+    ATBg_CanRestartIgnition=FALSE
+    IF (ATBg_SensorActive==TRUE) THEN
+     WHILE (ATAg_NoErrorUntilSeamEnd==TRUE)
+      ArcMsgQuit("NoNoErrorUntilSeamEndPossible","ATB", ,$PRO_NAME[],10293,Opt_NOVLSTOP_NOLOG)   
+     ENDWHILE
+    ENDIF
+    IF (ATBg_OnSeam == TRUE) THEN
+      nextState = #CheckPowerSource
+    ELSE
+      nextState = #BreakStateMachine
+    ENDIF
+    DeployMasterErrStrategy()
+    
+  CASE #CheckPowerSource
+    ;ArcTechDiag("SM_CheckPowerSource", 0)
+    IF (($MODE_OP==#EX)OR($MODE_OP==#AUT)) THEN
+      IF (ATB_SingleInpConfigured(ATIg_KeySwitchProcess)==TRUE) THEN
+        IF (ATI_GetInput(ATIg_KeySwitchProcess)==FALSE) THEN
+          ArcMsgNotify("HotRequestButDisabledByKeySwitch","ATB", ,$PRO_NAME[],10277,Opt_NOVLSTOP_LOG)
+        ENDIF      
+      ELSE
+        IF (ATBg_StatusKey_Hot==FALSE) THEN
+          ArcMsgNotify("HotRequestButDisabledByKeySwitch","ATB", ,$PRO_NAME[],10277,Opt_NOVLSTOP_LOG)       
+        ENDIF
+      ENDIF
+    ENDIF    
+    IF (ATBg_PowerSourceType==#ARCLINKXT) THEN
+       ATO_SetParamsToSignals(1, 0)
+       ATO_SetParamsToSignals(2, 0)
+       ATO_SetParamsToSignals(3, 0)
+       ATO_SetParamsToSignals(4, 0)
+       ATO_SetParamsToSignals(5, 0)
+       ATO_SetParamsToSignals(6, 0)
+       ATO_SetParamsToSignals(7, 0)
+       ATO_SetParamsToSignals(8, 0)
+    ENDIF
+    ATBg_IgnoreError=TRUE
+    SetRmdWaitIgnitionTime()
+    SetRmdWaitGasFlowTime()
+    
+    IF ATB_WeldRequest() THEN
+     IF(ATI_LimWaitForIO_Group(ATIg_RdyWeldSource[],ATBg_CurrentTimeout,#SourcePoweredUp)==FALSE)THEN
+      nextState = #PowerSourceNotRdy
+     ELSE
+      nextState = #CheckRobotReady
+     ENDIF
+    ELSE
+     nextState = #CheckRobotReady
+    ENDIF 
+    
+  CASE #CheckRobotReady
+    ;ArcTechDiag("SM_CheckRobotReady", 0)
+    ATBg_IgnoreError=TRUE
+    IF ATB_WeldRequest() THEN
+     IF RobotReadyForWeld() == TRUE THEN
+      nextState = #CheckPeriphery
+     ELSE
+      nextState = #RobotNotRdy
+     ENDIF
+    ELSE
+     nextState = #CheckPeriphery
+    ENDIF
+    
+  CASE #CheckPeriphery
+    ;ArcTechDiag("SM_CheckPeriphery", 0)
+    ATBg_IgnoreError=TRUE
+    IF ATB_WeldRequest() THEN
+     IF ATI_PeripheryReadyToWeld() == TRUE THEN
+      nextState = #PrepIgnition
+     ELSE
+      nextState = #PeriNotRdy
+     ENDIF
+    ELSE
+     nextState = #PrepIgnition
+    ENDIF
+    
+  CASE #PrepIgnition
+   ATBg_IgnoreError=FALSE
+   ATO_SetArcMode(ATBg_ActArcModeOn)
+   ATA_SetParameters(#ArcOn,ATBg_ActArcModeOn,ATBg_ActStartSet,ATBg_ActWeldSet,ATBg_ActCraterSet)
+   ATEg_RestartEvent = #Nothing  
+   ATBg_ErrorState =#Nothing
+   ATBg_WeldingActive = FALSE
+
+    IF ATB_WeldRequest() THEN
+      ArcTechDiag("SM_PrepIgnition", 0)
+      ATBg_WeldingActive = TRUE
+      IF (ATBg_FlyingGasActive AND NOT $TIMER_STOP[ATBg_PurgeTimer]) THEN
+        WAIT FoR $TIMER_FLAG[ATBg_PurgeTimer] OR (ATBg_FlyingGasActive==FALSE)
+      ENDIF
+      
+      ATB_Timer(ATBg_PurgeTimer,#TimerStop,0)      
+      ATBg_FlyingGasActive=FALSE
+      
+      ;Wait before ATA communication      
+      WaitRemoteDiffGasTime() ;Wait (empty for longer times at KIR)
+      ATOg_SetIO_Group(ATOg_GasPreFlowStart[],#AdvanceStop)
+      IF(ATI_LimitedWaitForInput(ATIg_GasFlowAvailable,ATBg_GasFlowTimeout,TRUE)==FALSE)THEN  
+       nextState = #NoGasFlow
+      ELSE
+        ON_ERROR_PROCEED
+        dPurgeTime=ATBg_ActStartSet.PurgeTime
+        IF ($ERR.Number > 0) THEN
+          dPurgeTime=0.0
+          ERR_CLEAR($ERR)
+        ENDIF
+        IF dPurgeTime > 0.0 THEN
+          IF ((ATBg_IgnRestartCounter > 0) AND (ATBg_SeamFailureCounter == 0) OR (ATBg_SeamFailureCounter > 0)OR (ATBg_FlyingGasStopped==TRUE)) THEN
+            WAIT SEC dPurgeTime
+          ENDIF
+        ENDIF
+        
+        ATBg_FlyingGasStopped=FALSE        
+        WAIT SEC ATBg_ActStartSet.PreFlowTime
+        WAIT FOR (ATBg_CurrentState<>#Error) ;Important for Restart after Stopmess
+        nextState = #Ignition
+      ENDIF
+    ELSE
+      ArcTechDiag("SM_PrepIgnition_Cold", 0)
+      ATBg_FlyingGasStopped=FALSE
+      nextState=#Ignition
+    ENDIF
+    
+  CASE #Ignition
+    ATBg_IgnoreError=FALSE
+    IF ATB_WeldRequest() THEN
+      ArcTechDiag("SM_Ignition", 0)
+      WaitRemoteDiffIgnitTime()
+      ATOg_SetIO_Group(ATOg_WeldStart[],#AdvanceStop)
+      ATBg_IgnRestartCounter=ATBg_IgnRestartCounter+1
+      IF(ATI_LimWaitForIO_Group(ATIg_WeldStartMove[],ATBg_CurrentTimeout,#ArcProcessRdyToStartMove)==FALSE) THEN
+       ATBg_IgnitionError = TRUE
+        IF (ATBg_IgnRestartCounter <= ATBg_StartErrSet.MaxRestart - 1) THEN
+         nextState = #IgnitionErrorRestart
+        ELSE
+         nextState = #IgnitionErrorStrategy
+        ENDIF
+      ELSE
+        WAIT SEC ATBg_ActStartSet.StartTime ; only when welding active
+        WAIT FOR (ATBg_CurrentState<>#Error) ;Important for Restart after Stopmess
+        nextState = #WaitArcStable
+      ENDIF
+    ELSE
+      ArcTechDiag("SM_Ignition_Cold", 0)
+      nextState = #WaitArcStable
+    ENDIF
+    
+  CASE #WaitArcStable
+    ATBg_IgnitionError = FALSE
+    ATBg_IgnoreError=FALSE
+    IF ATB_WeldRequest() THEN
+      ArcTechDiag("SM_WaitArcStable", 0)
+      ;Load and start Ignore timer to ignore jittering
+      ATB_Timer(ATBg_JitterDelayTimer,#LoadAndStart,-ABS(ATEg_InputBypassDelay*1000))
+      ;Define toggle timer to inactive
+      ATB_Timer(ATEg_ToggleTimerCtrl,#LoadAndStart,ABS(ATEg_TimeFrame));  ==> Timerflag TRUE
+    ELSE
+      ArcTechDiag("SM_WaitArcStable_Cold", 0)
+      ;Define both timer to become inactive
+      ATB_Timer(ATBg_JitterDelayTimer,#LoadAndStop,-ABS(ATEg_InputBypassDelay*1000))    
+      ATB_Timer(ATEg_ToggleTimerCtrl,#LoadAndStart,ABS(ATEg_TimeFrame));  ==> Timerflag TRUE    
+    ENDIF
+
+    ON_ERROR_PROCEED
+    INTERRUPT ON ATEg_ErrPeriphery_ISR_Nr ;(Default 8)
+    IF $ERR.NUMBER > 0 THEN
+      ATE_Errorhandler_Init()
+      INTERRUPT ON ATEg_ErrPeriphery_ISR_Nr ;(Default 8)
+      ERR_CLEAR ($ERR)
+    ENDIF
+    ForceRealWeldSpeedIfHot()
+    WAIT FOR (ATBg_CurrentState<>#Error) ;Important for Restart after Stopmess
+    nextState = #Welding
+    
+  CASE #Welding
+   ArcTechDiag("SM_Welding", 0)
+   ATBg_BlockArcOff = FALSE
+   ATEg_MoveFwdActive=FALSE
+   ATEg_BackSplStartActive = FALSE
+   ATBg_IgnoreError=FALSE
+   ;Switch to Weld Param
+   ATO_SetArcMode(ATBg_ActArcModeSwi)
+   ATA_SetParameters(#ArcSwi,ATBg_ActArcModeSwi,ATBg_ActStartSet,ATBg_ActWeldSet,ATBg_ActCraterSet)
+   WAIT FOR (ATBg_CurrentState<>#Error) ;Important for Restart after Stopmess
+   nextState = #BreakStateMachine
+  ;ENDFOLD
+  
+ ;FOLD Internal Errors of Statemachine 
+  CASE #RobotNotRdy
+    IF ($ERR.TRIGGER_TYPE<>#TRG_NONE) THEN 
+      BRAKE ;Stop when robot is moving. Called from trigger
+	ENDIF
+   ATBg_IgnoreError=TRUE
+   MessagesRobotNotRdyToWld() ;messages robot not ready for welding
+   WAIT SEC 0.3
+   nextState = #Init
+     
+  CASE #PowerSourceNotRdy
+    IF ($ERR.TRIGGER_TYPE<>#TRG_NONE) THEN 
+      BRAKE ;Stop when robot is moving. Called from trigger
+	ENDIF
+   ATBg_IgnoreError=TRUE
+   ATB_MsgsAtFailConditions(#SourcePoweredUp,#QUIT)
+   ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+   nextState = #Init
+     
+  CASE #PeriNotRdy
+    IF ($ERR.TRIGGER_TYPE<>#TRG_NONE) THEN 
+      BRAKE ;Stop when robot is moving. Called from trigger
+	ENDIF
+   ATBg_IgnoreError=TRUE
+   ATB_MsgsAtFailConditions(#PeripheryRdy,#QUIT)
+   IF (ATI_GetGroup(ATIg_RdyWeldSource[])==FALSE)THEN
+     ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+   ENDIF
+   nextState = #Init
+    
+  CASE #NoGasFlow
+    IF ($ERR.TRIGGER_TYPE<>#TRG_NONE) THEN 
+      BRAKE ;Stop when robot is moving. Called from trigger
+	ENDIF
+   ATBg_IgnoreError=TRUE
+   ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop)
+   IF (GetRobCompoundState()>1) THEN
+     ATB_Messages(#MsgNoGasPreFlow,#Notify)
+   ELSE
+     ATB_Messages(#MsgNoGasPreFlow,#Quit)
+   ENDIF 
+   nextState = #Init
+
+   CASE #IgnitionErrorRestart
+    ArcTechDiag("SM_IgnitionErrorRestart", 0)
+    ATBg_SaveState = #Ignition
+    ATBg_IgnoreError=TRUE
+    IF ($ERR.TRIGGER_TYPE<>#TRG_NONE) THEN 
+      BRAKE ;Stop when robot is moving. Called from trigger
+	ENDIF    
+    SetBurnBackArcLinkXt()
+    ATOg_SetIO_Group(ATOg_IgnitProblem[],#AdvanceStop)
+    WAIT SEC  ATBg_StartErrSet.RecoveryTime
+    BurnBackEndArcLinkXt()
+    ATBg_WeldingActive = FALSE
+    
+    SWITCH ATBg_StartErrSet.MsgType
+      CASE #NONE
+      CASE #NOTIFY
+        ATB_MsgsAtFailConditions(#ArcProcessRdyToStartMove,#NOTIFY)
+      CASE #QUIT
+        ATB_MsgsAtFailConditions(#ArcProcessRdyToStartMove,#QUIT)
+    ENDSWITCH
+    
+    IF ATB_WeldRequest() THEN 
+      ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+    ENDIF
+    nextState = #CheckPowerSource
+   
+  CASE #IgnitionErrorStrategy
+   ArcTechDiag("SM_IgnitionErrorStrategy", 0)
+   ATBg_IgnoreError=TRUE
+    IF ($ERR.TRIGGER_TYPE<>#TRG_NONE) THEN 
+      BRAKE ;Stop when robot is moving. Called from trigger
+	ENDIF
+    SetBurnBackArcLinkXt()    
+    ATOg_SetIO_Group(ATOg_IgnitProblem[],#AdvanceStop)
+    BurnBackEndArcLinkXt()
+    ATBg_WeldingActive = FALSE
+
+    SWITCH ATBg_StartErrSet.MsgType
+     CASE #NONE
+     CASE #NOTIFY
+       ATB_MsgsAtFailConditions(#ArcProcessRdyToStartMove,#NOTIFY)
+     CASE #QUIT
+       ATB_MsgsAtFailConditions(#ArcProcessRdyToStartMove,#QUIT)
+    ENDSWITCH
+    
+    SWITCH ATBg_StartErrSet.IgnitionFailureMsgType
+      CASE #NONE
+      CASE #NOTIFY           
+        ArcMsgNotify("TooMuchIgnitionsBigProblem","ATB", ,ATBg_SeamName[],10200,Opt_NOVLSTOP_LOG)
+      CASE #QUIT
+        ArcMsgQuit("TooMuchIgnitionsBigProblem","ATB", ,ATBg_SeamName[],10200,Opt_VLSTOP_LOG)
+    ENDSWITCH
+    
+    WAIT SEC  ATBg_StartErrSet.RecoveryTime
+    ATBg_IgnRestartCounter = 0
+    ATBg_IgnErrorCounter = ATBg_IgnErrorCounter + 1
+    
+    IF (ATBg_IgnErrorCounter>(ATBg_StartErrSet.MaxErrStrategies)) THEN
+     nextState = #IgnitionFailed
+    ELSE
+     IF (ATEg_MoveBackwardActive==TRUE) AND (ATBg_StartErrSet.IgnitionReaction==#BackToSplineStart) THEN
+      INTERRUPT ON ATEg_FwdRoot_ISR_Nr
+      ATBg_IgnErrAfterBack=TRUE
+      ATBg_ErrorSaveDist=$DISTANCE
+      ArcTechDiag("SM_BreakStateMachine", 0)
+      nextState = #BreakStateMachine
+     ELSE
+      ATA_Sync()
+      DoErrorMovementIgnition()
+      nextState = #CheckPowerSource    
+     ENDIF
+     IF (ATEg_BackSplStartActive == TRUE) OR (ATEg_MoveFwdActive==TRUE) THEN
+      ArcTechDiag("SM_BreakStateMachine", 1)
+      nextState = #BreakStateMachine
+     ENDIF
+    ENDIF
+
+  CASE #IgnitionFailed
+    ArcTechDiag("SM_IgnitionFailed", 0)
+    ATBg_IgnoreError=TRUE
+    IF ($ERR.TRIGGER_TYPE<>#TRG_NONE) THEN
+      BRAKE ;cuz of Ignit on the fly. When the robot is already stopped then it does not matter
+    ENDIF
+    SetBurnBackArcLinkXt()    
+    ATOg_SetIO_Group(ATOg_IgnitProblem[],#AdvanceStop)
+    BurnBackEndArcLinkXt()
+    ATBg_WeldingActive = FALSE
+    
+    ATI_BurnFreeIfNeeded()
+    ;ATOg_SetOneSignal(ATOg_CriticalIgnitError,#SetIO)
+    ATBg_IgnitionFailed=TRUE
+
+    IF (ATAg_ER_ArcGroupEnabled == FALSE) THEN
+     retValue = MaxErrorDecision()
+     ATAg_ErrorCounter = 0
+     ATAg_ErrorDistances[1] = 0.0
+     ATAg_ErrorDistances[2] = 0.0
+     ATAg_ErrorDistances[3] = 0.0
+     ATAg_ErrorDistances[4] = 0.0
+     ATAg_ErrorDistances[5] = 0.0
+     ATAg_ErrorRestarts[1] = FALSE
+     ATAg_ErrorRestarts[2] = FALSE
+     ATAg_ErrorRestarts[3] = FALSE
+     ATAg_ErrorRestarts[4] = FALSE
+     ATAg_ErrorRestarts[5] = FALSE
+    ELSE
+     ;Go to Serviceposition
+     ;TODO Selection before AdvancedRecovery
+     ;If already cold do not save as myError
+     IF (ATBg_ColdSeam == FALSE) THEN
+      ATA_SaveDatas(TRUE, TRUE, FALSE)
+     ELSE
+      ATA_SaveDatas(FALSE, TRUE, FALSE)
+     ENDIF
+     retValue = #Abort
+    ENDIF
+    SWITCH retValue
+     CASE #Retry
+      ;Start again
+      nextState = #Init
+     CASE #Abort
+      ;Finish cold
+      nextState = #Welding
+     DEFAULT
+      nextState = #Nothing
+     ENDSWITCH 
+
+ ;FOLD ArcOff Sequenze
+  CASE #StopWelding
+    ATBg_IgnoreError=FALSE
+    WAIT SEC ATBg_ActCraterSet.CraterTime 
+
+    IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+      ArcTechDiag("SM_StopWelding", 0)
+      SetBurnBackArcLinkXt()
+      ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+      BurnBackEndArcLinkXt()
+    ELSE
+     ArcTechDiag("SM_StopWelding_Cold", 0)
+    ENDIF
+
+    nextState = #GasPostFlow      
+
+  CASE #GasPostFlow
+    ArcTechDiag("SM_GasPostFlow", 0)
+    ATBg_IgnoreError=FALSE
+    WAIT SEC ATBg_ActCraterSet.PostflowTime   
+    nextState = #StopGasFlow 
+    
+  CASE #StopGasFlow
+    ArcTechDiag("SM_StopGasFlow", 0)
+    ATBg_IgnoreError=FALSE
+    
+    IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+      ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop)  
+      IF(ATI_LimitedWaitForInput(ATIg_GasFlowAvailable,ATBg_GasTimeoutOver,FALSE)==FALSE)THEN
+        IF (GetRobCompoundState()==1) THEN      
+          ATB_Messages(#MsgNoGasPostFlowOver,#QUIT) 
+        ELSE
+          ATB_Messages(#MsgNoGasPostFlowOver,#NOTIFY) 
+        ENDIF
+      ENDIF
+      
+      IF(ATI_LimWaitForIO_Group(ATIg_WeldSeamEnd[],ATBg_CurrentOverTimeout,#ArcProcessOver)==FALSE)THEN
+        ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop) 
+        ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+        IF (GetRobCompoundState()==1) THEN     
+          ATB_MsgsAtFailConditions(#ArcProcessOver,#QUIT)
+        ELSE
+          ATB_MsgsAtFailConditions(#ArcProcessOver,#NOTIFY)
+        ENDIF
+      ENDIF
+    ENDIF
+    nextState = #WeldingDone
+    
+  CASE #WeldingDone
+    ATBg_WeldingActive = FALSE
+    ArcTechDiag("SM_WeldingDone", 0)
+    ATBg_IgnoreError=TRUE
+    ATEg_RestartEvent = #Nothing  
+    ATBg_ErrorState = #Nothing
+    IF (ATBg_PowerSourceType==#ARCLINKXT) THEN
+     ATO_SetParamsToSignals(1, 0)
+     ATO_SetParamsToSignals(2, 0)
+     ATO_SetParamsToSignals(3, 0)
+     ATO_SetParamsToSignals(4, 0)
+     ATO_SetParamsToSignals(5, 0)
+     ATO_SetParamsToSignals(6, 0)
+     ATO_SetParamsToSignals(7, 0)
+     ATO_SetParamsToSignals(8, 0)
+    ENDIF
+    nextState = #BreakStateMachine
+  ;ENDFOLD
+    
+ ;FOLD Restart 
+    CASE #RestartAfterError
+    ArcTechDiag("SM_RestartAfterError", 0)
+    ATBg_IgnoreError=TRUE
+    
+    ;Wait for no Collision
+    WAIT FoR ($ON_PATH==TRUE) AND (bCollisionDetected==FALSE)
+    
+     ATBg_CanRestartIgnition =(ATBg_SeamFailureCounter<=ATBg_WeldErrSet.MaxBreaksOnSeam)AND(ATBg_RestartCondClosed==FALSE)
+     IF ATB_WeldRequest() THEN 
+      IF (ATBg_SeamFailureCounter<=ATBg_WeldErrSet.MaxBreaksOnSeam) THEN
+        ATOg_SetIO_Group(ATOg_ReceiptError[],#StopPulse)
+      ENDIF
+     ENDIF
+     
+     SWITCH ATBg_SaveState
+      CASE #PrepIgnition, #Ignition, #Welding
+        IF ATBg_CanRestartIgnition == TRUE THEN
+         IF (ATEg_StrategyAfterTStop==FALSE) AND (ATBg_ErrorState==#TechStop) THEN
+          ;Nothing
+         ELSE
+          IF (ATEg_BackSplStartActive==FALSE) AND (ATEg_MoveFwdActive==FALSE) THEN
+           IF ATBg_SaveState==#Welding THEN
+             ATA_Sync()
+             DoErrorMovementWeld()
+           ELSE
+             ATA_Sync()
+             DoErrorMovementIgnition()
+           ENDIF
+          ENDIF
+         ENDIF
+         IF  (ATEg_ErrStratActive == FALSE) THEN
+          IF (ATEg_BackSplStartActive==TRUE) OR (ATEg_MoveFwdActive==TRUE) THEN
+           ATBg_IgnRestartCounter=0
+           nextState = #CheckPowerSource
+          ELSE
+           nextState = #Init
+          ENDIF
+         ELSE
+          ArcTechDiag("SM_BreakStateMachine", 2)
+          nextState = #BreakStateMachine
+         ENDIF
+        ELSE
+
+        IF (ATAg_ER_ArcGroupEnabled == FALSE) THEN
+         retValue = MaxErrorDecision()
+         ATAg_ErrorCounter = 0
+         ATAg_ErrorDistances[1] = 0.0
+         ATAg_ErrorDistances[2] = 0.0
+         ATAg_ErrorDistances[3] = 0.0
+         ATAg_ErrorDistances[4] = 0.0
+         ATAg_ErrorDistances[5] = 0.0
+         ATAg_ErrorRestarts[1] = FALSE
+         ATAg_ErrorRestarts[2] = FALSE
+         ATAg_ErrorRestarts[3] = FALSE
+         ATAg_ErrorRestarts[4] = FALSE
+         ATAg_ErrorRestarts[5] = FALSE
+        ELSE
+         ;Go to Serviceposition
+         ;TODO Selection before AdvancedRecovery
+         ;If already cold do not save as myError
+         IF (ATBg_ColdSeam == FALSE) THEN
+          ATA_SaveDatas(TRUE, FALSE, FALSE)
+         ELSE
+          ATA_SaveDatas(FALSE, FALSE, FALSE)
+         ENDIF
+         retValue = #Abort
+        ENDIF
+        SWITCH retValue
+         CASE #Retry
+          ;Start again
+          nextState = #Init
+         CASE #Abort
+          ;Finish cold
+          nextState = #Welding
+        DEFAULT
+         nextState = #Nothing
+        ENDSWITCH 
+       ENDIF
+        
+      CASE #StopWelding,#GasPostFlow,#StopGasFlow,#WeldingDone
+        nextState = #WeldingDone
+      DEFAULT
+       IF (ATEg_BackSplStartActive==TRUE) OR (ATEg_MoveFwdActive==TRUE) THEN
+        ATBg_IgnRestartCounter=0
+        nextState = #CheckPowerSource
+       ELSE
+        ;All other States
+        nextState = #Init
+       ENDIF
+     ENDSWITCH
+    ;ENDFOLD
+
+  DEFAULT
+    Msg(AddStrings("Statemachine - ArcState not found", GetStringForState(nextState)))
+    WAIT SEC 1   
+  ENDSWITCH
+  RETURN(nextState)
+;ENDFOLD
+ENDFCT ;(SetState)
+;*****************************************************************************************
+;Sets the ArcErrorState
+;*****************************************************************************************
+GLOBAL DEF SetErrorState(ErrorState:in)
+DECL ArcErrorState ErrorState
+DECL INT i
+DECL BOOL IsRemoteError
+;FOLD Implementation  
+ATBg_IgnoreError = TRUE
+ATBg_ErrorState = ErrorState
+   
+  SWITCH ATBg_CurrentState 
+  
+    CASE #PrepIgnition,#Ignition,#WaitArcStable
+     IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN  
+       SetBurnBackArcLinkXt()
+       ATOg_SetIO_Group(ATOg_IgnitProblem[],#AdvanceStop)
+       BurnBackEndArcLinkXt()      
+     ENDIF
+   CASE #Welding
+    
+    ;Block ArcOff if Backward ErrorStrategie is active
+    IF (ATBg_InSplineBlock == TRUE) THEN
+     IF (ATBg_WeldErrSet.WeldErrReaction == #MoveBackward) OR (ATBg_StartErrSet.IgnitionReaction == #BackToSplineStart) THEN
+      ATBg_BlockArcOff = TRUE
+     ENDIF
+    ENDIF
+    IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+      ATBg_SeamFailureCounter=ATBg_SeamFailureCounter+1
+      SetBurnBackArcLinkXt()
+      ATOg_SetIO_Group(ATOg_WeldProblem[],#AdvanceStop)
+      BurnBackEndArcLinkXt() 
+    ENDIF    
+    
+    CASE #StopWelding
+      ATBg_RestartCondClosed=TRUE
+      SetBurnBackArcLinkXt()
+      ATOg_SetIO_Group(ATOg_WeldProblem[],#AdvanceStop)
+      BurnBackEndArcLinkXt() 
+
+    CASE #GasPostFlow
+      ATBg_RestartCondClosed=TRUE
+      ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+      ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop)
+
+      ;Add seam name to message
+      IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+       ATBg_MsgSorter("CraterfillingInterrupted",#Notify,10260)         
+      ENDIF
+      
+     CASE #StopGasFlow
+      ATBg_RestartCondClosed=TRUE
+      ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+      ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop)
+      IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+       ATBg_MsgSorter("CraterfillingInterrupted",#Notify,10260)         
+      ENDIF
+      
+     CASE #IgnitionFailed,#IgnitionErrorStrategy,#WeldingDone
+      IF (ATBg_BurnFreeActive==TRUE) THEN
+        ATOg_SetIO_Group(ATOg_WeldEnd[],#AdvanceStop)
+        ATOg_SetIO_Group(ATOg_GasPostFlowEnd[],#AdvanceStop)
+        ATBg_BurnFreeActive=FALSE    
+      ENDIF
+   ENDSWITCH 
+  ;FOLD external extension, ErrorHandle
+  ; do not edit this Fold!
+  ;ENDFOLD external extension, ErrorHandle
+  SWITCH ErrorState
+   CASE #DefaultError
+    ArcTechDiag("ERR_DefaultError", 0)
+    IF ATBg_DefErrFromOtherIR==FALSE THEN
+     ATBg_MyDefErr=TRUE
+     IsRemoteError = setRemoteError(#DefaultError)
+    ENDIF
+     
+   CASE #IRStopMess
+    ArcTechDiag("ERR_IRStopMess", 0)
+    SWITCH ATBg_CurrentState
+     CASE #Ignition,#PrepIgnition
+      IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+       ;Problem with QUIT Msg -> HALT in ir_stopm.src
+       ;ATBg_MsgSorter("IgnInterruptedByStopMess",ATBg_StartErrSet.IgnitionFailureMsgType,10225)
+       ATBg_MsgSorter("IgnInterruptedByStopMess",#Notify,10225)
+      ENDIF
+     CASE #Welding
+      ArcTechDiag("ERR_Welding", 0)
+      IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+       ;Problem with QUIT Msg -> HALT in ir_stopm.src
+       ATBg_MsgSorter("SeamInterruptedByRobotStopReaction",#Notify,10294)
+      ENDIF
+     ENDSWITCH
+
+   CASE #InputError
+    ArcTechDiag("ERR_InputError", 0)
+    ATB_MsgsAtFailConditions(#ArcSeamControl,ATBg_WeldErrSet.MsgType)
+    ;ATBg_MsgSorter("ErrorByTimeoutOfMissingSignals",ATBg_WeldErrSet.MsgType,10224)      
+    
+    ;Clear Error window counter
+    FOR i=1 TO 6
+      ATEg_WatchStructure[i].ActCounter=0
+      ATEg_WatchStructure[i].Distance=0
+    ENDFOR
+    
+   CASE #TechStop
+    ArcTechDiag("ERR_TechStop", 0)
+    IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+     ArcMsgNotify("TechstopExecutedRestartByStartkey","ATB", ,ATBg_SeamName[],10258,Opt_NOVLSTOP_LOG)
+    ENDIF
+
+   CASE #WatchdogCtrl
+    ArcTechDiag("ERR_WatchdogCtrl", 0)
+    ArcMsgNotify("WatchdogControlExecutedRestartByStartkey","ATB", ,ATBg_SeamName[],10256,Opt_NOVLSTOP_LOG)
+   
+   CASE #StillstandCtrl
+    ArcTechDiag("ERR_StillstandCtrl", 0)
+    IF ((ATB_WeldRequest()) OR (ATBg_WeldingActive == TRUE)) THEN
+     ArcMsgNotify("StillstandControlExecutedRestartByStartkey","ATB", ,ATBg_SeamName[],10255,Opt_NOVLSTOP_LOG)
+    ENDIF
+   
+   CASE #ConfigurationCtrl
+    ArcTechDiag("ERR_ConfigurationCtrl", 0)
+    ArcMsgNotify("StopByWrongConfigurationDatas","ATB", ,ATBg_SeamName[],10257,Opt_NOVLSTOP_LOG)
+   DEFAULT
+    ArcMsgQuit("Unknown ErrorState")
+   ENDSWITCH
+   IF ATBg_CurrentState<>#Error THEN
+    ATBg_SaveState = ATBg_CurrentState
+   ENDIF
+   ATBg_CurrentState = #Error
+   ATBg_WeldingActive = FALSE
+;ENDFOLD
+END ;(SetErrorState)
+;*****************************************************************************************
+;Wrapper to write a message, so there is no need to write the module anytime
+;*****************************************************************************************
+GLOBAL DEF Msg(msg[]:in)
+;FOLD Implementation
+DECL CHAR msg[]
+ArcMsgNotify(msg[],"ArcTech",,,,)
+;ENDFOLD
+END
+;*****************************************************************************************
+;Write diagnostic information in dat file
+;*****************************************************************************************
+GLOBAL DEF ArcTechDiag(tText1[]:IN, tInfo:IN,tText2[]:IN)
+DECL CHAR tText1[],tText2[],tText_1[80],tText_2[40], tProName[40]
+DECL INT tInfo,tCounter
+DECL BOOL tBuffer 
+IF (ATBg_DiagOn == FALSE) THEN
+  RETURN
+ENDIF
+  ERR_CLEAR($ERR)  
+  ON_ERROR_PROCEED 
+  tInfo = tInfo
+  IF ($ERR.Number > 0) THEN
+    tInfo = 0 
+    ERR_CLEAR($ERR) 
+  ENDIF
+  ON_ERROR_PROCEED
+  tText_1[] = tText1[]
+  IF ($ERR.Number > 0) THEN
+    tBuffer = STRCLEAR(tText_1[])
+    tText_1[]="Error_ToLong"
+    ERR_CLEAR($ERR)
+  ENDIF
+  tBuffer = STRCLEAR(tText_2[])
+  IF (STRLEN(tText2[])>1) THEN
+    IF (STRLEN(tText2[])>40) THEN 
+      tText_2[]="Error_ToLong"
+    ELSE
+      tText_2[]=tText2[]
+    ENDIF
+  ELSE
+    tText_2[]=" "
+  ENDIF 
+  ON_ERROR_PROCEED
+  tProName[] = $PRO_IP.NAME[]
+  IF ($ERR.Number > 0) THEN
+    tBuffer = STRCLEAR(tProName[])
+    tProName[]="Error_ToLong"
+    ERR_CLEAR($ERR)
+  ENDIF
+  ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ;Update array ArcDiag.dat
+  ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  IF ((mPosDiag >= cMaxDiagNr) OR (mPosDiag < 1)) THEN
+    FOR mPosDiag = 1 TO cMaxDiagNr
+      ArcDiagnostic[mPosDiag].Number = 0
+    ENDFOR
+    mPosDiag = 1
+  ELSE
+    mPosDiag = mPosDiag + 1
+  ENDIF
+  tCounter = mPosDiag
+  tBuffer = STRCLEAR(ArcDiagnostic[tCounter].DiagText[])
+  tBuffer = STRCLEAR(ArcDiagnostic[tCounter].SeamName[])
+  tBuffer = STRCLEAR(ArcDiagnostic[tCounter].ProgName[])
+  ArcDiagnostic[tCounter].DiagText[] = tText_1[]
+  ArcDiagnostic[tCounter].SeamName[] = ATBg_SeamName[]
+  ArcDiagnostic[tCounter].ProgName[] = tProName[]
+  ArcDiagnostic[tCounter].Snr        = $PRO_IP.SNR
+  ArcDiagnostic[tCounter].Distance   = $DISTANCE
+  ArcDiagnostic[tCounter].Date       = $DATE
+  ArcDiagnostic[tCounter].RobTimer   = $ROB_TIMER
+  ArcDiagnostic[tCounter].Info       = tInfo
+  ArcDiagnostic[tCounter].Number     = mPosDiag
+;ENDFOLD
+END
+;*****************************************************************************************
+;StartIgnition and ErrorHandling when ATBg_CurrentState==#Error
+;*****************************************************************************************
+GLOBAL DEF StartIgnition()
+DECL ArcState arcStateResult
+  ;Resume to arcStateResult = setArcState() and start again until BreakStateMachine
+  INTERRUPT DECL ATEg_ErrRestSub_ISR_Nr WHEN ATBg_CurrentState==#Error DO ATE_Restart_RES()
+  INTERRUPT ON ATEg_ErrRestSub_ISR_Nr
+  
+  REPEAT
+   arcStateResult=#Nothing
+   ArcTechDiag("StartIgnition", 0)
+   IF (ATBg_CurrentState==#Error) THEN
+    arcStateResult = SetArcState(#RestartAfterError)
+   ELSE
+    arcStateResult = SetArcState(#Init)
+   ENDIF
+  UNTIL arcStateResult==#BreakStateMachine
+
+END ;(StartIgnition)
+;*****************************************************************************************
+;Method called by the ArcTech commands to set a state
+;*****************************************************************************************
+GLOBAL DEFFCT ArcState SetArcState(state:in)
+;FOLD Declaration
+DECL ArcState state
+DECL ArcState nextState
+DECL ArcState stateToBeSet
+DECL CHAR stateMsg[2047]
+;ENDFOLD
+;FOLD Implementation
+
+  nextState=state
+  
+  WHILE nextstate <> #BreakStateMachine ;if there is an error
+  
+    ATBg_CurrentState = nextState
+    stateToBeSet = nextState 
+  
+    SETSTATESTART:
+  
+    ;SetStateRemote;Tries to set the state on the slaves, if master
+    SetStateRemote(stateToBeSet)
+  
+    IF ((stateToBeSet==#IgnitionErrorStrategy) OR (stateToBeSet==#IgnitionErrorRestart)) AND (ATAg_NoErrorUntilSeamEnd==TRUE) THEN
+     IF (ATBg_ColdSeam==FALSE) THEN
+      ATBg_IgnitionError=TRUE
+     ENDIF
+    ENDIF
+  
+    nextState=SetState(stateToBeSet)
+
+    ;Analyse Errors by getting the erros from all slaves and 
+    ;sending the next step to the slaves. nextState is set by the function,
+    AnalayseRemoteErrors(stateToBeSet, nextState)
+  
+  ENDWHILE
+
+  ;Msg(AddStrings("Setting state: ", GetStringForState(ATBg_CurrentState)))
+
+  RETURN(nextstate)
+;ENDFOLD
+ENDFCT ;(SetArcState)
+;*****************************************************************************************
+;Method called at Restart State Machine when error
+;*****************************************************************************************
+GLOBAL DEF ATE_Restart_RES()
+;FOLD Implementation
+  ON_ERROR_PROCEED
+  RESUME
+;ENDFOLD
+END

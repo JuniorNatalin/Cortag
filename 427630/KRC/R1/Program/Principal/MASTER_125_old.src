@@ -1,0 +1,51 @@
+&ACCESS RVP
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+DEF MASTER_125_old( )
+;FOLD INI;%{PE}
+  ;FOLD BASISTECH INI
+    GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+    INTERRUPT ON 3 
+    BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+;ENDFOLD (INI)
+
+
+;=======================================
+      WHILE (NOT Fim_De_Trabalho)
+LOOP
+
+   IF (Lib_Mesa_B) THEN
+   LADO_B_OPERADOR()
+   
+ ENDIF
+
+IF (Lib_Soldar_Mesa_A) THEN
+  
+NEW_MASTER_MESA_A()
+ENDIF
+
+
+
+
+;=======================================
+
+ IF (Lib_Mesa_A) THEN
+   LADO_A_OPERADOR()
+ENDIF
+
+
+ IF (Lib_Soldar_Mesa_B) THEN
+ 
+ MASTER_125_LADO_B()
+   ENDIF
+
+
+ENDLOOP
+
+ENDWHILE
+END

@@ -1,0 +1,32 @@
+&ACCESS RVP
+&REL 8
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\FunctionVorgabe
+DEFFCT BOOL Master_AB( )
+
+
+
+
+
+      WHILE (NOT Fim_De_Trabalho)
+LOOP
+   IF (Lib_Mesa_B) THEN
+   LADO_B_OPERADOR()
+   
+ENDIF
+NEW_MASTER_MESA_A()
+
+
+ IF (Lib_Mesa_A) THEN
+   LADO_A_OPERADOR()
+   
+
+
+MASTER_125_LADO_B()
+ENDIF
+
+
+ENDLOOP
+
+ENDWHILE
+ENDFCT

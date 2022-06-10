@@ -1,0 +1,1148 @@
+&ACCESS RVP
+&REL 381
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\Program\Solda\MASTER_125
+DEF NEW_MASTER_MESA_A( )
+;FOLD INI;%{PE}
+  ;FOLD BASISTECH INI
+    GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+    INTERRUPT ON 3 
+    BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+;ENDFOLD (INI)
+
+;FOLD PTP HOME  Vel= 100 % DEFAULT;%{PE}%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:HOME, 3:, 5:100, 7:DEFAULT
+$BWDSTART = FALSE
+PDAT_ACT=PDEFAULT
+FDAT_ACT=FHOME
+BAS (#PTP_PARAMS,100 )
+$H_POS=XHOME
+PTP  XHOME
+;ENDFOLD
+;FOLD ; CORDAO 01;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 01
+;ENDFOLD
+;FOLD ARCON WDAT39 PTP P78 Vel=100 % PDAT60 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P78; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT60; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT39; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT60
+FDAT_ACT = FP78
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(3, AS_WDAT39) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT39, TRUE)
+PTP XP78
+Arc_On(3, AS_WDAT39, ATBg_StartErrSetField[1], AW_WDAT39, WV_WDAT39, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT39, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT40 LIN P79 CPDAT22 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P79; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT22;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT40
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT22
+FDAT_ACT = FP79
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP79
+Arc_Off(1, AC_WDAT40)
+;ENDFOLD
+;FOLD PTP P93 CONT Vel=100 % PDAT70 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P93, 3:C_DIS, 5:100, 7:PDAT70
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT70
+FDAT_ACT=FP93
+BAS(#PTP_PARAMS,100)
+PTP XP93 C_DIS
+;ENDFOLD
+;FOLD PTP P94 CONT Vel=100 % PDAT71 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P94, 3:C_DIS, 5:100, 7:PDAT71
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT71
+FDAT_ACT=FP94
+BAS(#PTP_PARAMS,100)
+PTP XP94 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 02;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 02
+;ENDFOLD
+;FOLD ARCON WDAT41 PTP P80 Vel=100 % PDAT61 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P80; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT61; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT41; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT61
+FDAT_ACT = FP80
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT41) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT41, TRUE)
+PTP XP80
+Arc_On(1, AS_WDAT41, ATBg_StartErrSetField[1], AW_WDAT41, WV_WDAT41, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT41, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT42 LIN P81 CPDAT23 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P81; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT23;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT42
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT23
+FDAT_ACT = FP81
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP81
+Arc_Off(1, AC_WDAT42)
+;ENDFOLD
+;FOLD PTP P95 CONT Vel=100 % PDAT72 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P95, 3:C_DIS, 5:100, 7:PDAT72
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT72
+FDAT_ACT=FP95
+BAS(#PTP_PARAMS,100)
+PTP XP95 C_DIS
+;ENDFOLD
+;FOLD PTP P84 CONT Vel=100 % PDAT63 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P84, 3:C_DIS, 5:100, 7:PDAT63
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT63
+FDAT_ACT=FP84
+BAS(#PTP_PARAMS,100)
+PTP XP84 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 03;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 03
+;ENDFOLD
+;FOLD ARCON WDAT43 PTP P82 Vel=100 % PDAT62 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P82; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT62; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT43; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT62
+FDAT_ACT = FP82
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT43) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT43, TRUE)
+PTP XP82
+Arc_On(1, AS_WDAT43, ATBg_StartErrSetField[1], AW_WDAT43, WV_WDAT43, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT43, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT44 LIN P83 CPDAT24 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P83; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT24;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT44
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT24
+FDAT_ACT = FP83
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP83
+Arc_Off(1, AC_WDAT44)
+;ENDFOLD
+;FOLD PTP P85 CONT Vel=100 % PDAT64 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P85, 3:C_DIS, 5:100, 7:PDAT64
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT64
+FDAT_ACT=FP85
+BAS(#PTP_PARAMS,100)
+PTP XP85 C_DIS
+;ENDFOLD
+;FOLD PTP P86 CONT Vel=100 % PDAT65 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P86, 3:C_DIS, 5:100, 7:PDAT65
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT65
+FDAT_ACT=FP86
+BAS(#PTP_PARAMS,100)
+PTP XP86 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 04;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 04
+;ENDFOLD
+;FOLD ARCON WDAT45 PTP P87 Vel=100 % PDAT66 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P87; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT66; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT45; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT66
+FDAT_ACT = FP87
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT45) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT45, TRUE)
+PTP XP87
+Arc_On(1, AS_WDAT45, ATBg_StartErrSetField[1], AW_WDAT45, WV_WDAT45, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT45, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT46 LIN P88 CPDAT25 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P88; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT25;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT46
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT25
+FDAT_ACT = FP88
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP88
+Arc_Off(1, AC_WDAT46)
+;ENDFOLD
+;FOLD PTP P89 CONT Vel=100 % PDAT67 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P89, 3:C_DIS, 5:100, 7:PDAT67
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT67
+FDAT_ACT=FP89
+BAS(#PTP_PARAMS,100)
+PTP XP89 C_DIS
+;ENDFOLD
+;FOLD PTP P92 CONT Vel=100 % PDAT69 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P92, 3:C_DIS, 5:100, 7:PDAT69
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT69
+FDAT_ACT=FP92
+BAS(#PTP_PARAMS,100)
+PTP XP92 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 05;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 05
+;ENDFOLD
+;FOLD ARCON WDAT47 PTP P90 Vel=100 % PDAT68 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P90; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT68; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT47; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT68
+FDAT_ACT = FP90
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT47) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT47, TRUE)
+PTP XP90
+Arc_On(1, AS_WDAT47, ATBg_StartErrSetField[1], AW_WDAT47, WV_WDAT47, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT47, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT48 LIN P91 CPDAT26 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P91; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT26;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT48
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT26
+FDAT_ACT = FP91
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP91
+Arc_Off(1, AC_WDAT48)
+;ENDFOLD
+;FOLD PTP P96 CONT Vel=100 % PDAT73 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P96, 3:C_DIS, 5:100, 7:PDAT73
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT73
+FDAT_ACT=FP96
+BAS(#PTP_PARAMS,100)
+PTP XP96 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 06;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 06
+;ENDFOLD
+;FOLD ARCON WDAT49 PTP P97 Vel=100 % PDAT74 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P97; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT74; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT49; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT74
+FDAT_ACT = FP97
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT49) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT49, TRUE)
+PTP XP97
+Arc_On(1, AS_WDAT49, ATBg_StartErrSetField[1], AW_WDAT49, WV_WDAT49, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT49, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT50 LIN P98 CPDAT27 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P98; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT27;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT50
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT27
+FDAT_ACT = FP98
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP98
+Arc_Off(1, AC_WDAT50)
+;ENDFOLD
+;FOLD ARCOFF WDAT51 LIN P99 CPDAT28 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P99; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT28;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT51
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT28
+FDAT_ACT = FP99
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP99
+Arc_Off(1, AC_WDAT51)
+;ENDFOLD
+;FOLD ; CORDAO 07;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 07
+;ENDFOLD
+;FOLD ARCON WDAT52 PTP P100 Vel=100 % PDAT75 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P100; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT75; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT52; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT75
+FDAT_ACT = FP100
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT52) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT52, TRUE)
+PTP XP100
+Arc_On(1, AS_WDAT52, ATBg_StartErrSetField[1], AW_WDAT52, WV_WDAT52, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT52, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT53 LIN P101 CPDAT29 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P101; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT29;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT53
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT29
+FDAT_ACT = FP101
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP101
+Arc_Off(1, AC_WDAT53)
+;ENDFOLD
+;FOLD ; CORDAO 08;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 08
+;ENDFOLD
+;FOLD ARCON WDAT54 PTP P102 Vel=100 % PDAT76 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P102; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT76; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT54; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT76
+FDAT_ACT = FP102
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT54) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT54, TRUE)
+PTP XP102
+Arc_On(1, AS_WDAT54, ATBg_StartErrSetField[1], AW_WDAT54, WV_WDAT54, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT54, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT55 LIN P103 CPDAT30 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P103; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT30;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT55
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT30
+FDAT_ACT = FP103
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP103
+Arc_Off(1, AC_WDAT55)
+;ENDFOLD
+;FOLD PTP P104 CONT Vel=100 % PDAT77 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P104, 3:C_DIS, 5:100, 7:PDAT77
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT77
+FDAT_ACT=FP104
+BAS(#PTP_PARAMS,100)
+PTP XP104 C_DIS
+;ENDFOLD
+;FOLD PTP P118 CONT Vel=100 % PDAT88 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P118, 3:C_DIS, 5:100, 7:PDAT88
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT88
+FDAT_ACT=FP118
+BAS(#PTP_PARAMS,100)
+PTP XP118 C_DIS
+;ENDFOLD
+;FOLD PTP P119 CONT Vel=100 % PDAT89 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P119, 3:C_DIS, 5:100, 7:PDAT89
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT89
+FDAT_ACT=FP119
+BAS(#PTP_PARAMS,100)
+PTP XP119 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 09;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 09
+;ENDFOLD
+;FOLD ARCON WDAT56 PTP P105 Vel=100 % PDAT78 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P105; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT78; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT56; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT78
+FDAT_ACT = FP105
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT56) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT56, TRUE)
+PTP XP105
+Arc_On(1, AS_WDAT56, ATBg_StartErrSetField[1], AW_WDAT56, WV_WDAT56, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT56, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT57 LIN P106 CPDAT31 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P106; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT31;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT57
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT31
+FDAT_ACT = FP106
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP106
+Arc_Off(1, AC_WDAT57)
+;ENDFOLD
+;FOLD ; CORDAO 10;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 10
+;ENDFOLD
+;FOLD ARCON WDAT58 PTP P107 Vel=100 % PDAT79 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P107; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT79; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT58; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT79
+FDAT_ACT = FP107
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT58) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT58, TRUE)
+PTP XP107
+Arc_On(1, AS_WDAT58, ATBg_StartErrSetField[1], AW_WDAT58, WV_WDAT58, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT58, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT59 LIN P108 CPDAT32 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P108; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT32;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT59
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT32
+FDAT_ACT = FP108
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP108
+Arc_Off(1, AC_WDAT59)
+;ENDFOLD
+;FOLD PTP P112 CONT Vel=100 % PDAT82 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P112, 3:C_DIS, 5:100, 7:PDAT82
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT82
+FDAT_ACT=FP112
+BAS(#PTP_PARAMS,100)
+PTP XP112 C_DIS
+;ENDFOLD
+;FOLD PTP P111 CONT Vel=100 % PDAT81 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P111, 3:C_DIS, 5:100, 7:PDAT81
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT81
+FDAT_ACT=FP111
+BAS(#PTP_PARAMS,100)
+PTP XP111 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 11;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 11
+;ENDFOLD
+;FOLD ARCON WDAT60 PTP P109 Vel=100 % PDAT80 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P109; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT80; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT60; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT80
+FDAT_ACT = FP109
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT60) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT60, TRUE)
+PTP XP109
+Arc_On(1, AS_WDAT60, ATBg_StartErrSetField[1], AW_WDAT60, WV_WDAT60, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT60, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT61 LIN P110 CPDAT33 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P110; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT33;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT61
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT33
+FDAT_ACT = FP110
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP110
+Arc_Off(1, AC_WDAT61)
+;ENDFOLD
+;FOLD PTP P117 CONT Vel=100 % PDAT87 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P117, 3:C_DIS, 5:100, 7:PDAT87
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT87
+FDAT_ACT=FP117
+BAS(#PTP_PARAMS,100)
+PTP XP117 C_DIS
+;ENDFOLD
+;FOLD PTP P116 CONT Vel=100 % PDAT86 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P116, 3:C_DIS, 5:100, 7:PDAT86
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT86
+FDAT_ACT=FP116
+BAS(#PTP_PARAMS,100)
+PTP XP116 C_DIS
+;ENDFOLD
+;FOLD PTP P115 CONT Vel=100 % PDAT85 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P115, 3:C_DIS, 5:100, 7:PDAT85
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT85
+FDAT_ACT=FP115
+BAS(#PTP_PARAMS,100)
+PTP XP115 C_DIS
+;ENDFOLD
+;FOLD PTP P114 CONT Vel=100 % PDAT84 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P114, 3:C_DIS, 5:100, 7:PDAT84
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT84
+FDAT_ACT=FP114
+BAS(#PTP_PARAMS,100)
+PTP XP114 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 12;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 12
+;ENDFOLD
+;FOLD ARCON WDAT62 PTP P113 Vel=100 % PDAT83 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P113; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT83; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT62; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT83
+FDAT_ACT = FP113
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT62) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT62, TRUE)
+PTP XP113
+Arc_On(1, AS_WDAT62, ATBg_StartErrSetField[1], AW_WDAT62, WV_WDAT62, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT62, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT63 LIN P120 CPDAT34 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P120; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT34;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT63
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT34
+FDAT_ACT = FP120
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP120
+Arc_Off(1, AC_WDAT63)
+;ENDFOLD
+;FOLD PTP P121 CONT Vel=100 % PDAT90 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P121, 3:C_DIS, 5:100, 7:PDAT90
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT90
+FDAT_ACT=FP121
+BAS(#PTP_PARAMS,100)
+PTP XP121 C_DIS
+;ENDFOLD
+;FOLD PTP P138 CONT Vel=100 % PDAT101 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P138, 3:C_DIS, 5:100, 7:PDAT101
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT101
+FDAT_ACT=FP138
+BAS(#PTP_PARAMS,100)
+PTP XP138 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 13;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 13
+;ENDFOLD
+;FOLD ARCON WDAT64 PTP P122 Vel=100 % PDAT91 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P122; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT91; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT64; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT91
+FDAT_ACT = FP122
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT64) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT64, TRUE)
+PTP XP122
+Arc_On(1, AS_WDAT64, ATBg_StartErrSetField[1], AW_WDAT64, WV_WDAT64, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT64, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT65 LIN P123 CPDAT35 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P123; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT35;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT65
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT35
+FDAT_ACT = FP123
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP123
+Arc_Off(1, AC_WDAT65)
+;ENDFOLD
+;FOLD PTP P139 CONT Vel=100 % PDAT102 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P139, 3:C_DIS, 5:100, 7:PDAT102
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT102
+FDAT_ACT=FP139
+BAS(#PTP_PARAMS,100)
+PTP XP139 C_DIS
+;ENDFOLD
+;FOLD PTP P140 CONT Vel=100 % PDAT103 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P140, 3:C_DIS, 5:100, 7:PDAT103
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT103
+FDAT_ACT=FP140
+BAS(#PTP_PARAMS,100)
+PTP XP140 C_DIS
+;ENDFOLD
+;FOLD PTP P141 CONT Vel=100 % PDAT104 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P141, 3:C_DIS, 5:100, 7:PDAT104
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT104
+FDAT_ACT=FP141
+BAS(#PTP_PARAMS,100)
+PTP XP141 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 14;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 14
+;ENDFOLD
+;FOLD ARCON WDAT66 PTP P124 Vel=100 % PDAT92 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P124; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT92; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT66; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT92
+FDAT_ACT = FP124
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT66) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT66, TRUE)
+PTP XP124
+Arc_On(1, AS_WDAT66, ATBg_StartErrSetField[1], AW_WDAT66, WV_WDAT66, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT66, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT67 LIN P125 CPDAT36 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P125; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT36;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT67
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT36
+FDAT_ACT = FP125
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP125
+Arc_Off(1, AC_WDAT67)
+;ENDFOLD
+;FOLD PTP P142 CONT Vel=100 % PDAT105 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P142, 3:C_DIS, 5:100, 7:PDAT105
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT105
+FDAT_ACT=FP142
+BAS(#PTP_PARAMS,100)
+PTP XP142 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 15;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 15
+;ENDFOLD
+;FOLD ARCON WDAT68 PTP P126 Vel=100 % PDAT93 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P126; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT93; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT68; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT93
+FDAT_ACT = FP126
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT68) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT68, TRUE)
+PTP XP126
+Arc_On(1, AS_WDAT68, ATBg_StartErrSetField[1], AW_WDAT68, WV_WDAT68, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT68, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT69 LIN P127 CPDAT37 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P127; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT37;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT69
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT37
+FDAT_ACT = FP127
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP127
+Arc_Off(1, AC_WDAT69)
+;ENDFOLD
+;FOLD ; CORDAO 16;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 16
+;ENDFOLD
+;FOLD ARCON WDAT70 PTP P128 Vel=100 % PDAT94 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P128; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT94; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT70; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT94
+FDAT_ACT = FP128
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT70) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT70, TRUE)
+PTP XP128
+Arc_On(1, AS_WDAT70, ATBg_StartErrSetField[1], AW_WDAT70, WV_WDAT70, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT70, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT71 LIN P129 CPDAT38 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P129; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT38;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT71
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT38
+FDAT_ACT = FP129
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP129
+Arc_Off(1, AC_WDAT71)
+;ENDFOLD
+;FOLD PTP P130 CONT Vel=100 % PDAT95 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P130, 3:C_DIS, 5:100, 7:PDAT95
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT95
+FDAT_ACT=FP130
+BAS(#PTP_PARAMS,100)
+PTP XP130 C_DIS
+;ENDFOLD
+;FOLD PTP P131 CONT Vel=100 % PDAT96 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P131, 3:C_DIS, 5:100, 7:PDAT96
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT96
+FDAT_ACT=FP131
+BAS(#PTP_PARAMS,100)
+PTP XP131 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 17;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 17
+;ENDFOLD
+;FOLD ARCON WDAT72 PTP P132 Vel=100 % PDAT97 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P132; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT97; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT72; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT97
+FDAT_ACT = FP132
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT72) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT72, TRUE)
+PTP XP132
+Arc_On(1, AS_WDAT72, ATBg_StartErrSetField[1], AW_WDAT72, WV_WDAT72, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT72, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT73 LIN P133 CPDAT39 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P133; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT39;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT73
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT39
+FDAT_ACT = FP133
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP133
+Arc_Off(1, AC_WDAT73)
+;ENDFOLD
+;FOLD PTP P143 CONT Vel=100 % PDAT106 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P143, 3:C_DIS, 5:100, 7:PDAT106
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT106
+FDAT_ACT=FP143
+BAS(#PTP_PARAMS,100)
+PTP XP143 C_DIS
+;ENDFOLD
+;FOLD PTP P144 CONT Vel=100 % PDAT107 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P144, 3:C_DIS, 5:100, 7:PDAT107
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT107
+FDAT_ACT=FP144
+BAS(#PTP_PARAMS,100)
+PTP XP144 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 18;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 18
+;ENDFOLD
+;FOLD ARCON WDAT74 PTP P134 Vel=100 % PDAT98 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P134; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT98; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT74; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT98
+FDAT_ACT = FP134
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT74) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT74, TRUE)
+PTP XP134
+Arc_On(1, AS_WDAT74, ATBg_StartErrSetField[1], AW_WDAT74, WV_WDAT74, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT74, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT75 LIN P135 CPDAT40 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P135; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT40;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT75
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT40
+FDAT_ACT = FP135
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP135
+Arc_Off(1, AC_WDAT75)
+;ENDFOLD
+;FOLD PTP P137 CONT Vel=100 % PDAT100 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P137, 3:C_DIS, 5:100, 7:PDAT100
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT100
+FDAT_ACT=FP137
+BAS(#PTP_PARAMS,100)
+PTP XP137 C_DIS
+;ENDFOLD
+;FOLD PTP P136 CONT Vel=100 % PDAT99 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P136, 3:C_DIS, 5:100, 7:PDAT99
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT99
+FDAT_ACT=FP136
+BAS(#PTP_PARAMS,100)
+PTP XP136 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 19;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 19
+;ENDFOLD
+;FOLD ARCON WDAT76 PTP P145 Vel=100 % PDAT108 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P145; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT108; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT76; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT108
+FDAT_ACT = FP145
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT76) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT76, TRUE)
+PTP XP145
+Arc_On(1, AS_WDAT76, ATBg_StartErrSetField[1], AW_WDAT76, WV_WDAT76, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT76, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT77 LIN P146 CPDAT41 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P146; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT41;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT77
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT41
+FDAT_ACT = FP146
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP146
+Arc_Off(1, AC_WDAT77)
+;ENDFOLD
+;FOLD PTP P157 CONT Vel=100 % PDAT115 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P157, 3:C_DIS, 5:100, 7:PDAT115
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT115
+FDAT_ACT=FP157
+BAS(#PTP_PARAMS,100)
+PTP XP157 C_DIS
+;ENDFOLD
+;FOLD PTP P158 CONT Vel=100 % PDAT116 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P158, 3:C_DIS, 5:100, 7:PDAT116
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT116
+FDAT_ACT=FP158
+BAS(#PTP_PARAMS,100)
+PTP XP158 C_DIS
+;ENDFOLD
+;FOLD PTP P159 CONT Vel=100 % PDAT117 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P159, 3:C_DIS, 5:100, 7:PDAT117
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT117
+FDAT_ACT=FP159
+BAS(#PTP_PARAMS,100)
+PTP XP159 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 20;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 20
+;ENDFOLD
+;FOLD ARCON WDAT78 PTP P147 Vel=100 % PDAT109 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P147; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT109; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT78; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT109
+FDAT_ACT = FP147
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT78) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT78, TRUE)
+PTP XP147
+Arc_On(1, AS_WDAT78, ATBg_StartErrSetField[1], AW_WDAT78, WV_WDAT78, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT78, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT87 LIN P160 CPDAT46 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P160; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT46;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT87
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT46
+FDAT_ACT = FP160
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP160
+Arc_Off(1, AC_WDAT87)
+;ENDFOLD
+;FOLD PTP P161 CONT Vel=100 % PDAT118 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P161, 3:C_DIS, 5:100, 7:PDAT118
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT118
+FDAT_ACT=FP161
+BAS(#PTP_PARAMS,100)
+PTP XP161 C_DIS
+;ENDFOLD
+;FOLD PTP P162 CONT Vel=100 % PDAT119 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P162, 3:C_DIS, 5:100, 7:PDAT119
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT119
+FDAT_ACT=FP162
+BAS(#PTP_PARAMS,100)
+PTP XP162 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 20;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 20
+;ENDFOLD
+;FOLD ARCON WDAT79 PTP P148 Vel=100 % PDAT110 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P148; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT110; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT79; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT110
+FDAT_ACT = FP148
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT79) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT79, TRUE)
+PTP XP148
+Arc_On(1, AS_WDAT79, ATBg_StartErrSetField[1], AW_WDAT79, WV_WDAT79, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT79, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT80 LIN P149 CPDAT42 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P149; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT42;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT80
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT42
+FDAT_ACT = FP149
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP149
+Arc_Off(1, AC_WDAT80)
+;ENDFOLD
+;FOLD PTP P163 CONT Vel=100 % PDAT120 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P163, 3:C_DIS, 5:100, 7:PDAT120
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT120
+FDAT_ACT=FP163
+BAS(#PTP_PARAMS,100)
+PTP XP163 C_DIS
+;ENDFOLD
+;FOLD PTP P164 CONT Vel=100 % PDAT121 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P164, 3:C_DIS, 5:100, 7:PDAT121
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT121
+FDAT_ACT=FP164
+BAS(#PTP_PARAMS,100)
+PTP XP164 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 21;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 21
+;ENDFOLD
+;FOLD ARCON WDAT83 PTP P152 Vel=100 % PDAT112 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P152; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT112; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT83; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT112
+FDAT_ACT = FP152
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT83) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT83, TRUE)
+PTP XP152
+Arc_On(1, AS_WDAT83, ATBg_StartErrSetField[1], AW_WDAT83, WV_WDAT83, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT83, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT84 LIN P153 CPDAT44 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P153; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT44;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT84
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT44
+FDAT_ACT = FP153
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP153
+Arc_Off(1, AC_WDAT84)
+;ENDFOLD
+;FOLD PTP P165 CONT Vel=100 % PDAT122 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P165, 3:C_DIS, 5:100, 7:PDAT122
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT122
+FDAT_ACT=FP165
+BAS(#PTP_PARAMS,100)
+PTP XP165 C_DIS
+;ENDFOLD
+;FOLD PTP P166 CONT Vel=100 % PDAT123 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P166, 3:C_DIS, 5:100, 7:PDAT123
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT123
+FDAT_ACT=FP166
+BAS(#PTP_PARAMS,100)
+PTP XP166 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 22;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 22
+;ENDFOLD
+;FOLD ARCON WDAT85 PTP P154 Vel=100 % PDAT113 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P154; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT113; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT85; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT113
+FDAT_ACT = FP154
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT85) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT85, TRUE)
+PTP XP154
+Arc_On(1, AS_WDAT85, ATBg_StartErrSetField[1], AW_WDAT85, WV_WDAT85, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT85, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT86 LIN P155 CPDAT45 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P155; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT45;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT86
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT45
+FDAT_ACT = FP155
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP155
+Arc_Off(1, AC_WDAT86)
+;ENDFOLD
+;FOLD PTP P156 CONT Vel=100 % PDAT114 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P156, 3:C_DIS, 5:100, 7:PDAT114
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT114
+FDAT_ACT=FP156
+BAS(#PTP_PARAMS,100)
+PTP XP156 C_DIS
+;ENDFOLD
+;FOLD PTP P169 CONT Vel=100 % PDAT125 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P169, 3:C_DIS, 5:100, 7:PDAT125
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT125
+FDAT_ACT=FP169
+BAS(#PTP_PARAMS,100)
+PTP XP169 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 21;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 21
+;ENDFOLD
+;FOLD ARCON WDAT88 PTP P167 Vel=100 % PDAT124 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P167; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT124; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT88; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT124
+FDAT_ACT = FP167
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT88) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT88, TRUE)
+PTP XP167
+Arc_On(1, AS_WDAT88, ATBg_StartErrSetField[1], AW_WDAT88, WV_WDAT88, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT88, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT89 LIN P168 CPDAT47 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P168; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT47;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT89
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT47
+FDAT_ACT = FP168
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP168
+Arc_Off(1, AC_WDAT89)
+;ENDFOLD
+;FOLD PTP P173 CONT Vel=100 % PDAT128 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P173, 3:C_DIS, 5:100, 7:PDAT128
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT128
+FDAT_ACT=FP173
+BAS(#PTP_PARAMS,100)
+PTP XP173 C_DIS
+;ENDFOLD
+;FOLD PTP P172 CONT Vel=100 % PDAT127 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P172, 3:C_DIS, 5:100, 7:PDAT127
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT127
+FDAT_ACT=FP172
+BAS(#PTP_PARAMS,100)
+PTP XP172 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 21;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 21
+;ENDFOLD
+;FOLD ARCON WDAT90 PTP P170 Vel=100 % PDAT126 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P170; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT126; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT90; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT126
+FDAT_ACT = FP170
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT90) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT90, TRUE)
+PTP XP170
+Arc_On(1, AS_WDAT90, ATBg_StartErrSetField[1], AW_WDAT90, WV_WDAT90, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT90, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT91 LIN P171 CPDAT48 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P171; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT48;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT91
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT48
+FDAT_ACT = FP171
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP171
+Arc_Off(1, AC_WDAT91)
+;ENDFOLD
+;FOLD PTP P174 CONT Vel=100 % PDAT129 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P174, 3:C_DIS, 5:100, 7:PDAT129
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT129
+FDAT_ACT=FP174
+BAS(#PTP_PARAMS,100)
+PTP XP174 C_DIS
+;ENDFOLD
+;FOLD PTP P185 CONT Vel=100 % PDAT137 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P185, 3:C_DIS, 5:100, 7:PDAT137
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT137
+FDAT_ACT=FP185
+BAS(#PTP_PARAMS,100)
+PTP XP185 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 21;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 21
+;ENDFOLD
+;FOLD ARCON WDAT92 PTP P175 Vel=100 % PDAT130 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P175; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT130; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT92; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT130
+FDAT_ACT = FP175
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT92) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT92, TRUE)
+PTP XP175
+Arc_On(1, AS_WDAT92, ATBg_StartErrSetField[1], AW_WDAT92, WV_WDAT92, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT92, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT93 LIN P176 CPDAT49 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P176; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT49;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT93
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT49
+FDAT_ACT = FP176
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP176
+Arc_Off(1, AC_WDAT93)
+;ENDFOLD
+;FOLD PTP P184 CONT Vel=100 % PDAT136 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P184, 3:C_DIS, 5:100, 7:PDAT136
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT136
+FDAT_ACT=FP184
+BAS(#PTP_PARAMS,100)
+PTP XP184 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 21;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 21
+;ENDFOLD
+;FOLD ARCON WDAT94 PTP P177 Vel=100 % PDAT131 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P177; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT131; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT94; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT131
+FDAT_ACT = FP177
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT94) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT94, TRUE)
+PTP XP177
+Arc_On(1, AS_WDAT94, ATBg_StartErrSetField[1], AW_WDAT94, WV_WDAT94, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT94, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT95 LIN P178 CPDAT50 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P178; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT50;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT95
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT50
+FDAT_ACT = FP178
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP178
+Arc_Off(1, AC_WDAT95)
+;ENDFOLD
+;FOLD PTP P179 CONT Vel=100 % PDAT132 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P179, 3:C_DIS, 5:100, 7:PDAT132
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT132
+FDAT_ACT=FP179
+BAS(#PTP_PARAMS,100)
+PTP XP179 C_DIS
+;ENDFOLD
+;FOLD PTP P183 CONT Vel=100 % PDAT135 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P183, 3:C_DIS, 5:100, 7:PDAT135
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT135
+FDAT_ACT=FP183
+BAS(#PTP_PARAMS,100)
+PTP XP183 C_DIS
+;ENDFOLD
+;FOLD ; CORDAO 21;%{PE}%R 8.3.48,%MKUKATPBASIS,%CCOMMENT,%VNORMAL,%P 2:CORDAO 21
+;ENDFOLD
+;FOLD ARCON WDAT96 PTP P180 Vel=100 % PDAT133 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arconptp; Kuka.PointName=P180; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT133; Kuka.VelocityPtp=100; Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT96; ArcTech.SeamName=
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT133
+FDAT_ACT = FP180
+BAS(#PTP_PARAMS, 100.0)
+TRIGGER WHEN DISTANCE = 1 DELAY = ATBg_PreDefinitionTime DO Arc_DefineStrikeParams(1, AS_WDAT96) PRIO = -1
+Arc_DefineCpPattern(#OffInAdvance, WV_WDAT96, TRUE)
+PTP XP180
+Arc_On(1, AS_WDAT96, ATBg_StartErrSetField[1], AW_WDAT96, WV_WDAT96, ATBg_WeldErrSetField[1], #StdArcOn, " ")
+Arc_DefineCpPattern(#OnInAdvance, WV_WDAT96, TRUE)
+;ENDFOLD
+;FOLD ARCOFF WDAT97 LIN P181 CPDAT51 Tool[1]:TOCH Base[0] ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.arctech.arcofflin; Kuka.PointName=P181; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT51;  Kuka.MovementParameterFieldEnabled=True; ArcTech.WdatVarName=WDAT97
+;ENDFOLD
+$BWDSTART = FALSE
+LDAT_ACT = LCPDAT51
+FDAT_ACT = FP181
+BAS(#CP_PARAMS, ATBg_BAS_VELDefinition)
+LIN XP181
+Arc_Off(1, AC_WDAT97)
+;ENDFOLD
+;FOLD PTP P182 CONT Vel=100 % PDAT134 Tool[1]:TOCH Base[0];%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P182, 3:C_DIS, 5:100, 7:PDAT134
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT134
+FDAT_ACT=FP182
+BAS(#PTP_PARAMS,100)
+PTP XP182 C_DIS
+;ENDFOLD
+;FOLD PTP HOME Vel=100 % DEFAULT;%{PE}%R 8.3.48,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:HOME, 3:, 5:100, 7:DEFAULT
+$BWDSTART=FALSE
+PDAT_ACT=PDEFAULT
+FDAT_ACT=FHOME
+BAS(#PTP_PARAMS,100)
+$H_POS=XHOME
+PTP XHOME 
+;ENDFOLD
+;FOLD WAIT FOR NOT ( IN 129 'AVA/REC MESA B' );%{PE}%R 8.3.48,%MKUKATPBASIS,%CEXT_WAIT_FOR,%VEXT_WAIT_FOR,%P 2:NOT, 4:, 5:$IN, 6:129, 7:AVA/REC MESA B, 9:
+WAIT FOR  NOT ( $IN[129] ) 
+;ENDFOLD
+END

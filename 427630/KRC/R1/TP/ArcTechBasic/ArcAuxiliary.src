@@ -1,0 +1,279 @@
+&ACCESS  R
+&COMMENT ATB Auxiliaries
+DEF  ArcAuxiliary( )
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END  
+;----------------------------------
+;Parameter sets -> weld source
+;----------------------------------
+GLOBAL DEF ATA_SetParameters(Command:IN,ArcModeIndex:IN,StartSet:OUT,WeldSet:OUT,CraterSet:OUT)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL ATBg_Command_Type_T Command  ;#ArcOn,ArcSwi,ARCOff
+DECL INT ArcModeIndex             ;ArcMode 1..4
+DECL ATBg_Start_T StartSet
+DECL ATBg_Weld_T WeldSet
+DECL ATBg_Crater_T CraterSet
+DECL INT ChannelNr, intBuffer
+;ENDFOLD
+  ;FOLD Implementation
+  SWITCH Command
+  
+    CASE #ArcOn ;StartSet
+    
+      ATAg_TempValueStart[1]=StartSet.Channel1
+      ATAg_TempValueStart[2]=StartSet.Channel2
+      ATAg_TempValueStart[3]=StartSet.Channel3
+      ATAg_TempValueStart[4]=StartSet.Channel4
+      ATAg_TempValueStart[5]=StartSet.Channel5
+      ATAg_TempValueStart[6]=StartSet.Channel6
+      ATAg_TempValueStart[7]=StartSet.Channel7
+      ATAg_TempValueStart[8]=StartSet.Channel8
+       
+      FOR ChannelNr=1 TO 8
+        IF ((ArcModeIndex<=ATA_MaxNrOfArcModi)AND(ArcModeIndex>0))THEN
+          IF (ATAg_ArcModiCoding[ArcModeIndex].InUse==TRUE)THEN
+            ;integer/real => same treatment
+            ATAg_ParameterValStart[ChannelNr]=CalculateValueForChannel(ATAg_TempValueStart[ChannelNr],ArcModeIndex,ChannelNr)
+            ATAg_iParameterValStart[ChannelNr]=ATAg_ParameterValStart[ChannelNr]
+            
+            IF (ATAg_iParameterValStart[ChannelNr]<0) THEN
+              ATAg_iParameterValStart[ChannelNr]=Create2erComplement(ChannelNr,ATAg_iParameterValStart[ChannelNr])
+            ENDIF
+
+            IF (ATA_ArcOnChannelActive[ArcModeIndex,ChannelNr]==TRUE)THEN
+             IF (ATBg_PowerSourceType==#ARCLINKXT) AND (ChannelNr==8) THEN
+              ;Bit 8 has to be FALSE for Synergic and non Synergic at ignition
+              intBuffer = ATAg_iParameterValStart[8]
+              intBuffer = intBuffer B_AND 'B01111111'
+              ATO_SetParamsToSignals(8,intBuffer)
+             ELSE
+              ATO_SetParamsToSignals(ChannelNr,ATAg_iParameterValStart[ChannelNr])
+             ENDIF
+            ENDIF
+          ENDIF
+        ELSE
+          SetErrorState(#ConfigurationCtrl)
+          WHILE TRUE          
+            ArcMsgQuit("InvalidArcModeAtIgnitionSet","ATB",,ATBg_SeamName[],10229,Opt_VLSTOP_LOG)
+          ENDWHILE
+        ENDIF
+      ENDFOR
+
+    CASE #ArcSwi ;WeldSet
+    
+      ATAg_TempValueWeld[1]=WeldSet.Channel1
+      ATAg_TempValueWeld[2]=WeldSet.Channel2
+      ATAg_TempValueWeld[3]=WeldSet.Channel3
+      ATAg_TempValueWeld[4]=WeldSet.Channel4
+      ATAg_TempValueWeld[5]=WeldSet.Channel5
+      ATAg_TempValueWeld[6]=WeldSet.Channel6
+      ATAg_TempValueWeld[7]=WeldSet.Channel7
+      ATAg_TempValueWeld[8]=WeldSet.Channel8
+      
+      FOR ChannelNr=1 TO 8
+        IF ((ArcModeIndex<=ATA_MaxNrOfArcModi)AND(ArcModeIndex>0))THEN
+          IF (ATAg_ArcModiCoding[ArcModeIndex].InUse==TRUE)THEN
+            ATAg_ParameterValWeld[ChannelNr]=CalculateValueForChannel(ATAg_TempValueWeld[ChannelNr],ArcModeIndex,ChannelNr)
+            ATAg_iParameterValWeld[ChannelNr]=ATAg_ParameterValWeld[ChannelNr]
+
+            IF (ATAg_iParameterValWeld[ChannelNr]<0) THEN
+              ATAg_iParameterValWeld[ChannelNr]=Create2erComplement(ChannelNr,ATAg_iParameterValWeld[ChannelNr])
+            ENDIF              
+            
+            IF (ATA_ArcSwiChannelActive[ArcModeIndex,ChannelNr]==TRUE)THEN
+              ATO_SetParamsToSignals(ChannelNr,ATAg_iParameterValWeld[ChannelNr])
+            ENDIF
+          ENDIF
+        ELSE
+          SetErrorState(#ConfigurationCtrl) 
+          WHILE TRUE             
+            ArcMsgQuit("InvalidArcModeAtWeldSet","ATB",,ATBg_SeamName[],10230,Opt_VLSTOP_LOG)
+          ENDWHILE
+        ENDIF
+      ENDFOR  
+      
+    CASE #ArcOff ;CraterSet
+    
+      ATAg_TempValueCrater[1]=CraterSet.Channel1
+      ATAg_TempValueCrater[2]=CraterSet.Channel2
+      ATAg_TempValueCrater[3]=CraterSet.Channel3
+      ATAg_TempValueCrater[4]=CraterSet.Channel4
+      ATAg_TempValueCrater[5]=CraterSet.Channel5
+      ATAg_TempValueCrater[6]=CraterSet.Channel6
+      ATAg_TempValueCrater[7]=CraterSet.Channel7
+      ATAg_TempValueCrater[8]=CraterSet.Channel8
+      
+      FOR ChannelNr=1 TO 8
+        IF ((ArcModeIndex<=ATA_MaxNrOfArcModi)AND(ArcModeIndex>0))THEN
+          IF (ATAg_ArcModiCoding[ArcModeIndex].InUse==TRUE)THEN
+            ATAg_ParameterValCrater[ChannelNr]=CalculateValueForChannel(ATAg_TempValueCrater[ChannelNr],ArcModeIndex,ChannelNr)
+            ATAg_iParameterValCrater[ChannelNr]=ATAg_ParameterValCrater[ChannelNr]
+
+            IF (ATAg_iParameterValCrater[ChannelNr]<0) THEN
+              ATAg_iParameterValCrater[ChannelNr]=Create2erComplement(ChannelNr,ATAg_iParameterValCrater[ChannelNr])
+            ENDIF               
+            
+            IF (ATA_ArcOffChannelActive[ArcModeIndex,ChannelNr]==TRUE)THEN
+              ATO_SetParamsToSignals(ChannelNr,ATAg_iParameterValCrater[ChannelNr])
+            ENDIF
+          ENDIF
+        ELSE
+          SetErrorState(#ConfigurationCtrl) 
+          WHILE TRUE             
+            ArcMsgQuit("InvalidArcModeAtCraterSet","ATB",,ATBg_SeamName[],10231,Opt_VLSTOP_LOG)
+          ENDWHILE
+        ENDIF
+      ENDFOR
+      
+    DEFAULT
+      ArcMsgNotify("UnknownArcCommandAtSetParameter","ATB",,ATBg_SeamName[],10253,Opt_NOVLSTOP_NOLOG)
+  ENDSWITCH
+;ENDFOLD 
+;ENDFOLD
+END ;(ATA_SetParameters) 
+;----------------------------------------------
+;Calculating characteristics of Controler lines
+;Result is a collection of structures von mx+b 
+;==> ATAg_StraightLineDef[4,8,4] {m , b}
+;----------------------------------------------
+GLOBAL DEF ATA_DefCharacteristics()
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL INT ArcModeIndex,ChannelNr,Point
+DECL INT Offset
+DECL REAL Delta_X,Delta_Y
+DECL CHAR STRDEST[40]
+;ENDFOLD
+  ;FOLD Implementation
+    ;Clear mx + b forms
+  FOR ArcModeIndex=1 TO ATA_MaxNrOfArcModi
+    FOR ChannelNr=1 TO 8 
+      FOR Point=1 TO 4 ;maximum of straight lines
+        ;Arc modi,channel,number of line
+        ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].m=0.0
+        ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].b=0.0
+      ENDFOR
+    ENDFOR
+  ENDFOR
+  
+  ;Calculation only of necessary straight lines
+  FOR ArcModeIndex=1 TO ATA_MaxNrOfArcModi
+
+    IF (ATAg_ArcModiCoding[ArcModeIndex].InUse==TRUE)THEN
+      FOR ChannelNr=1 TO 8
+        ;Check number of points for definition of straight lines
+        IF(ATA_MaxPointOfChannel[ArcModeIndex,ChannelNr]<2) OR (ATA_MaxPointOfChannel[ArcModeIndex,ChannelNr]>5)THEN
+          REPEAT
+            Offset=ATB_IntToString(STRDEST[],ChannelNr)
+            ArcMsgQuit("NumberOfSegmentsIsTooBigOrTooLessConfigurationIsWrong","ATB",,STRDEST[],10232,Opt_VLSTOP_LOG)
+          UNTIL (TRUE==FALSE)
+        ENDIF
+
+        FOR Point=1 TO (ATA_MaxPointOfChannel[ArcModeIndex,ChannelNr]-1)
+          ;Calculation of straight lines to mx+b definitions:  m=delta y / delta x     b= y - mx
+          IF((ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point+1].Para-ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].Para)<=1E-08) THEN ;Nenner(x)
+            Delta_X=0.0
+            Delta_Y=ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point+1].VAL-ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].VAL            
+          ELSE
+            Delta_X=(ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point+1].Para-ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].Para)         
+            Delta_Y=ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point+1].VAL-ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].VAL
+          ENDIF
+ 
+          IF (Delta_X==0.0)THEN
+            ;Avoid division by zero
+            ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].m=0.0
+            ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].b=ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].VAL-ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].m*ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].Para
+          ELSE
+            ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].m=Delta_Y/Delta_X
+            ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].b=ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].VAL-ATAg_StraightLineDef[ArcModeIndex,ChannelNr,Point].m*ATA_ChannelDefinition[ArcModeIndex,ChannelNr,Point].Para
+          ENDIF
+          
+        ENDFOR
+      ENDFOR
+    ENDIF
+  ENDFOR
+;ENDFOLD
+;ENDFOLD
+END ;(ATA_DefCharacteristics)
+;----------------------------------------------
+;Searching the right straight line of controler characteristic
+;calculating of output value upon the configured chracteristic
+;----------------------------------------------
+DEFFCT REAL CalculateValueForChannel(Param_IN:IN,ArcModeIndex:IN,ChannelNr:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL REAL Param_IN
+DECL REAL Result
+DECL INT ArcModeIndex,ChannelNr
+DECL INT MaxPoints
+DECL INT Idx, MaximumNr
+
+;ENDFOLD
+  ;FOLD Implementation
+  MaxPoints=ATA_MaxPointOfChannel[ArcModeIndex,ChannelNr]
+  SWITCH MaxPoints
+    CASE 2
+      Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].b
+    CASE 3
+      IF (Param_IN>ATA_ChannelDefinition[ArcModeIndex,ChannelNr,2].Para)THEN
+        Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,2].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,2].b
+      ELSE
+        Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].b
+      ENDIF
+    CASE 4
+      IF (Param_IN>ATA_ChannelDefinition[ArcModeIndex,ChannelNr,3].Para)THEN
+        Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,3].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,3].b
+      ELSE
+        IF (Param_IN>ATA_ChannelDefinition[ArcModeIndex,ChannelNr,2].Para)THEN
+          Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,2].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,2].b
+        ELSE
+          Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].b
+        ENDIF
+      ENDIF
+    CASE 5 
+      IF (Param_IN>ATA_ChannelDefinition[ArcModeIndex,ChannelNr,3].Para)THEN
+        IF (Param_IN>ATA_ChannelDefinition[ArcModeIndex,ChannelNr,4].Para)THEN
+          Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,4].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,4].b
+        ELSE
+          Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,3].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,3].b
+        ENDIF 
+      ELSE
+        IF (Param_IN>ATA_ChannelDefinition[ArcModeIndex,ChannelNr,2].Para)THEN
+          Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,2].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,2].b
+        ELSE
+          Result=Param_IN*ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].m+ATAg_StraightLineDef[ArcModeIndex,ChannelNr,1].b
+        ENDIF    
+      ENDIF
+  ENDSWITCH
+
+  RETURN(Result);real
+;ENDFOLD
+;ENDFOLD
+ENDFCT ;(CalculateValueForChannel)
+;XXXXXXXXXXXXXXXXXXXXXX
+;X Interface Routines X
+;XXXXXXXXXXXXXXXXXXXXXX
+GLOBAL DEFFCT INT ATA_GetMaxIndexOfMode()
+ RETURN(ATA_MaxNrOfArcModi)
+ENDFCT ;(ATA_GetMaxIndexOfMode)
+;-----------------------------------------------
+DEFFCT INT Create2erComplement(ChannelNr:IN,ChannelValue:IN)
+;FOLD Declarations
+DECL INT ChannelNr
+DECL REAL ChannelValue
+;2er complement
+DECL INT Idx,MaximumNr,iTempResult 
+DECL INT iResult 
+;ENDFOLD
+  MaximumNr=0
+  FOR Idx=1 TO GetSignalWidth(ChannelNr)
+    MaximumNr=MaximumNr*2+1
+  ENDFOR
+  iTempResult=ABS(ChannelValue)-1
+  iResult=iTempResult B_EXOR MaximumNr
+  RETURN(iResult)            
+ENDFCT ;(Create2erComplement)

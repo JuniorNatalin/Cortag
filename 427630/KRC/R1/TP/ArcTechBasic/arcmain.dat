@@ -1,0 +1,204 @@
+&ACCESS  R
+&COMMENT ATB base module
+&PARAM DISKPATH = TP/ArcTechBasic
+DEFDAT  arcmain PUBLIC
+;FOLD Options
+DECL GLOBAL CONST BOOL ATBg_CircTypeSetEnable=TRUE
+DECL GLOBAL BOOL ATBg_DontSwitch=FALSE
+;ENDFOLD ;(Options)
+;FOLD Enums and Structures
+;Do not change sequence of enum states
+GLOBAL ENUM ATBg_ProcessState_T Undefined,PlcInit,ColdIgnition,ColdSeam,PrgFree,ArcInit,SourceNotRdy,SourceRdy,IgnitionSetValid,RobReadyForProcess,PeripheryAlsoRdy,NoGasFlow,IgnitFailed,GasFlow,IgnitionStarted,IgnitionOK,MainCurrentActive,CraterFilling,GasPostFlow,WireFreeOK,SeamOK,NoProcessOver,NoGasPostFlowOver,WireFreeFailed,HotSeamInterrupted
+GLOBAL ENUM ATBg_Command_Type_T ArcOn,ArcSwi,ArcOff
+GLOBAL ENUM ATBg_TimerAction_T LoadAndStop,TimerStart,LoadAndStart,TimerStop
+GLOBAL ENUM ATBg_Message_OUT_T MsgWireFree,MsgTorchColl,MsgNoGasPreFlow,MsgNoGasPostFlowOver,MsgWeldProcess
+GLOBAL ENUM ATBg_TypeOfInformation_T SourcePoweredUp,PeripheryRdy,ArcProcessRdyToStartMove,ArcSeamControl,ArcProcessOver
+GLOBAL STRUC ARCg_SUGG_T CHAR W_Param[24],SeamName[24],WeaveParam[24]
+GLOBAL STRUC ATBg_ProcStsDiagnose_T INT Idx,ATBg_ProcessState_T Old,New,INT CallFrom,REAL Distc
+GLOBAL STRUC ATBg_Start_T INT JobModeId,ParamSetId,REAL StartTime,PreFlowTime,Channel1,Channel2,Channel3,Channel4,Channel5,Channel6,Channel7,Channel8,PurgeTime
+GLOBAL STRUC ATBg_Weld_T INT JobModeId,ParamSetId,REAL Velocity,Channel1,Channel2,Channel3,Channel4,Channel5,Channel6,Channel7,Channel8
+GLOBAL STRUC ATBg_Crater_T INT JobModeId,ParamSetId,REAL CraterTime,PostflowTime,Channel1,Channel2,Channel3,Channel4,Channel5,Channel6,Channel7,Channel8,BurnBackTime
+;ENDFOLD ;(Enums and Structures)
+;FOLD Default adjustments for global error handling
+DECL GLOBAL ATBg_S_Err_T ATBg_StartErrSet={MsgType #NONE,RecoveryTime 1.00000,MaxRestart 2,IgnitionFailureMsgType #QUIT,MaxErrStrategies 1,IgnitionReaction #KeepOnPosition,FwdDistance 0.0,Index 1}
+DECL GLOBAL ATBg_W_Err_T ATBg_WeldErrSet={MsgType #QUIT,MaxBreaksOnSeam 3,WeldErrReaction #KeepOnPosition,MotionOnSeam 0.0,Index 1}
+;ENDFOLD 
+;FOLD Burnfree internals
+DECL GLOBAL BOOL ATBg_BurnFreeActive=FALSE ;Current burn free process
+;ENDFOLD
+;FOLD General settings;%{PE}
+;FOLD Timeouts
+DECL GLOBAL BOOL ATBg_EnablePreDelayOfJob=FALSE ;Enable: Waiting time on Job preDeffinition (Call from TRIGGER),DEFAULT = FALSE
+DECL GLOBAL INT ATBg_PreDefinitionTime=-100 ;[ms] SettlingTime for Ignition in Trigger command
+DECL REAL ATB_PreDefinitionTime=0.100000 ;Time[s] to stabile start params
+;ENDFOLD
+;FOLD Motion adjustments
+DECL GLOBAL REAL ATBg_DistSplCondStop=1.00000 ;[mm] Distance for conditional stop at ArcOn 
+DECL GLOBAL REAL ATBg_NDistSplCondStop=-1.00000 ;[mm] Distance for trigger at ArcOff
+DECL GLOBAL REAL ATBg_EpsArcOffStop=-0.00100000 ;[mm] Distance for conditional stop at ArcOff
+DECL GLOBAL ArcState ATBg_SplOnCondition=#Welding ;Condition for STOP at ArcOn
+DECL GLOBAL ArcState ATBg_SplOffCondition=#WeldingDone ;Condition for STOP at ArcOff
+;ENDFOLD
+;ENDFOLD
+;FOLD External Mode #EX
+DECL GLOBAL BOOL ATBg_GhostMode=FALSE
+;ENDFOLD
+;FOLD Resourcen;%{PE}
+;FOLD Timer
+DECL GLOBAL INT ATBg_JitterDelayTimer=17 ;Timer for cyclic seam control
+DECL GLOBAL INT ATBg_PurgeTimer=18
+DECL GLOBAL INT ATBg_IoCheckTimer=19
+;ENDFOLD
+;FOLD Submit Interrupt
+DECL GLOBAL INT ATBg_CollisionSubmIntNr=4 ;Interrupt for collision device independant from selected user program
+;ENDFOLD 
+;ENDFOLD 
+;FOLD System;%{PE}
+;FOLD Actual Weld Sets and ArcMode
+DECL GLOBAL ATBg_Start_T ATBg_ActStartSet={JobModeId 1306102413,ParamSetId -1047099609,StartTime 0.0,PreFlowTime 0.0,Channel1 0.0,Channel2 2.00000,Channel3 0.0,Channel4 0.0,Channel5 0.0,Channel6 0.0,Channel7 0.0,Channel8 0.0,PurgeTime 0.0}
+DECL GLOBAL ATBg_Weld_T ATBg_ActWeldSet={JobModeId 1306102413,ParamSetId -540622874,Velocity 0.00830000,Channel1 0.0,Channel2 1.00000,Channel3 0.0,Channel4 0.0,Channel5 0.0,Channel6 0.0,Channel7 0.0,Channel8 0.0}
+DECL GLOBAL ATBg_Crater_T ATBg_ActCraterSet={JobModeId -187662529,ParamSetId -1375177600,CraterTime 0.100000,PostflowTime 0.100000,Channel1 30.0000,Channel2 1.00000,Channel3 0.0,Channel4 0.0,Channel5 0.0,Channel6 0.0,Channel7 0.0,Channel8 0.0,BurnBackTime 0.0}
+DECL GLOBAL INT ATBg_ActArcModeOn=3 ;Actual ArcMode On
+DECL GLOBAL INT ATBg_ActArcModeSwi=1 ;Actual ArcMode Switch
+;ENDFOLD ;(Actual Weld Sets and ArcMode)
+;FOLD ProMode
+DECL INT ATB_ProModeState=1
+DECL INT ATB_ProModeStateBuffer=1
+;ENDFOLD
+;FOLD ChecksumMessage
+DECL GLOBAL BOOL ATB_ChecksumMsgSet=FALSE
+DECL GLOBAL BOOL ATB_ChecksumMsgAndHot=FALSE
+DECL GLOBAL BOOL ATB_ChecksumMsgSave=FALSE
+;ENDFOLD
+;FOLD ModeOp
+DECL INT ATB_ModeOp=1
+DECL INT ATB_ModeOpSave=1
+DECL GLOBAL BOOL ATBg_ModeOpChanged=TRUE
+;ENDFOLD
+;FOLD Status Keys
+DECL GLOBAL BOOL ATBg_StatusKey_Hot=TRUE ;Set by HMI
+DECL GLOBAL INT ATBg_StatusKey_WireFeed=0 ;Set by HMI
+DECL GLOBAL BOOL ATBg_SK_BtnSetGas=FALSE ;[Gas] Set by HMI
+DECL GLOBAL INT ATBg_SK_BtnStatusGas=0 ;[Gas] Status to HMI
+DECL GLOBAL BOOL ATBg_SK_KrlSetGas=FALSE ;[Gas] temp Status Key
+DECL INT ATB_SK_TimeGasStamp=81305 ;[Gas] Temp time for gas test
+DECL GLOBAL CONST REAL ATBg_GasPulseLength=5.00000 ;[Gas] Range from 1 to 20 [s]
+DECL GLOBAL BOOL ATBg_SK_BtnSetErrQuit=FALSE ;[Reset Power Source] Set by HMI
+DECL GLOBAL INT ATBg_SK_BtnPSReady=0 ;[Reset Power Source]Status to HMI
+DECL GLOBAL INT ATBg_SK_BtnStatusErrQuit=0 ;[Reset Power Source]Status to HMI
+DECL GLOBAL BOOL ATBg_SK_KrlSetErrQuit=FALSE ;[Reset Power Source] temp Status Key
+DECL GLOBAL BOOL ATBg_HotRequest=FALSE ;Set by HMI
+DECL GLOBAL BOOL ATBg_DryRun=FALSE ;Set by HMI to switch off weaveing and fast movement
+DECL GLOBAL INT ATBg_DryVelFactor=1 ;Set move factor
+DECL INT ATB_HistoryWFD_State=0 ;Recognizes change of wirefeed status key
+DECL GLOBAL BOOL ATBg_OnSeam=FALSE ;Robot is on Seam
+DECL BOOL ATB_StatKeyHotBuffer=TRUE ;Help Variable to get rising edge
+DECL BOOL ATB_StatKeyHotRising=FALSE ;Rising Edge of Status Key Hot
+DECL BOOL ATB_StatKeyHotFalling=FALSE ;Falling Edge of Status Key Hot
+;ENDFOLD
+;FOLD Error bit coded informations
+DECL GLOBAL INT ATBg_InfoToSetStsKeyHot='B0000' ;BitMask 
+;ENDFOLD
+;FOLD System informations
+DECL GLOBAL BOOL ATBg_ClearChannels=TRUE ;Clear Outputs at ArcOff or ProgReset
+DECL GLOBAL BOOL ATBg_GlobalSetChanged=FALSE
+DECL GLOBAL BOOL ATBg_RealArcOn=FALSE
+GLOBAL BOOL ATBg_IsInitialized=TRUE
+DECL INT SafeOverrideValue=-1 ; 
+DECL GLOBAL BOOL ATBg_Hot_Weld=TRUE ;Generated information to weld
+DECL GLOBAL BOOL ATBg_WeldingActive=FALSE ;Welding is active
+DECL BOOL ClearedOutputFlag=FALSE ;Flag to clear output once
+DECL BOOL ATB_LineSelect=FALSE ;local copy of information
+DECL INT ATB_LineSelDelay=0 ;Delay for Statuskeys
+DECL INT ATB_LineSelDelaySave=0 ;For sure reset from $LINE_SEL_OK
+DECL GLOBAL BOOL ATBg_FlagLineSelect=FALSE ;Flag for lineSelect
+DECL GLOBAL BOOL ATBg_InSplineBlock=FALSE ;Flag to know if SplineMovement is active
+DECL GLOBAL BOOL ATBg_FlyingGasActive=FALSE ;Flying Gas active flag
+DECL GLOBAL BOOL ATBg_FlyingGasStopped=FALSE ;Flying gas was interrupted
+DECL GLOBAL REAL ATBg_DistanceAtArcOn=0.0 ;$Distance Value at ArcOn
+DECL GLOBAL REAL rTime_T0=2476971.00 ;[ms]
+DECL GLOBAL REAL rTime_T1=1212969.00 ;[ms]
+DECL GLOBAL REAL rDeltaTime=118.000 ;[ms]
+DECL GLOBAL REAL rDeltaTimeInSec=-0.0180000
+DECL GLOBAL BOOL bCircTypeChanged=FALSE
+DECL GLOBAL CIRC_TYPE SavedCircType=#BASE
+DECL GLOBAL BOOL ATBg_DefErrFromOtherIR=FALSE
+DECL GLOBAL BOOL ATBg_MyDefErr=FALSE
+DECL GLOBAL BOOL ATBg_TryToStart=FALSE
+DECL GLOBAL BOOL ATBg_BlockArcOff=FALSE
+;ENDFOLD
+;FOLD Online Optimizing
+DECL GLOBAL BOOL ATBg_OnlineOptRequest=FALSE ;Event for online Interrupt: Request by param key
+DECL GLOBAL BOOL ATBg_OnlineOptActive=FALSE ;Online opt active for other technology
+DECL GLOBAL BOOL ATBg_DisableOnlineOpt=FALSE ;Permission for activating online opt
+DECL GLOBAL BOOL ATBg_SensorActive=FALSE ;Disable online optimization when ArcSense sensor is active
+DECL GLOBAL BOOL ATBg_ArcSwiTriggered=TRUE ;Update of weld / Seam datas by ARC_SWI command
+DECL GLOBAL BOOL ATBg_ArcOffTriggered=FALSE ;Update of weld / Seam datas by ARC_OFF command
+DECL GLOBAL BOOL ATBg_WeaveParamChanged=FALSE ;Weave params changed depends upon online page
+DECL GLOBAL REAL ATBg_PreArrangedVelocity=0.00830000 ; 
+;ENDFOLD
+;ENDFOLD
+;FOLD Seam informations
+DECL GLOBAL REAL ATBg_BAS_VelDefinition=0.00830000 ; Help variable for fold content at block selection
+DECL GLOBAL CHAR ATBg_SeamName[24]
+ATBg_SeamName[]=" "
+;ENDFOLD
+;FOLD Error diagnosis
+DECL GLOBAL BOOL ATBg_ColdSeam=FALSE ;Flag for ColdSeam
+DECL GLOBAL INT ATBg_IgnErrorCounter=0 ;Global diagnosis: Number of ignitions
+DECL GLOBAL INT ATBg_IgnRestartCounter=1 ;Global diagnosis: Number of failures + (number of ignitions)==> real number of ignitions
+DECL GLOBAL INT ATBg_SeamFailureCounter=0 ;Global diagnosis: Number of failures on seam
+DECL GLOBAL BOOL ATBg_RestartCondClosed=TRUE ;FALSE | Restart can happen
+DECL GLOBAL INT ATBg_SourceErrorBits='B0000' ;Bit mask of error or communication state of power supply
+DECL GLOBAL INT ATBg_PeripheryErrorBits='B0000' ;Bit mask of missing peripheries
+DECL GLOBAL INT ATBg_StartMoveErrorBits='B0000' ;Bit mask of missing process conditions
+DECL GLOBAL INT ATBg_WeldMovingErrorBits='B0000' ;Bit mask of missing inputs while welding on seam
+DECL GLOBAL INT ATBg_ArcOffProcErrorBits='B0000' ;Bit mask of missing current over signals
+DECL GLOBAL INT ATBg_RoboterErrorBits='B0000' ;Bit mask of availabilitty of robot controller for welding
+DECL GLOBAL BOOL ATBg_JobModeShowNotify=FALSE ;Memory Flag,different ID src<>WOV, show only one time info message
+;ENDFOLD
+;FOLD Message adjustments
+DECL GLOBAL CONST KRLMSGOPT_T Opt_NOVLSTOP_NOLOG={VL_STOP FALSE,CLEAR_P_RESET TRUE,LOG_TO_DB FALSE} ;Message option without VLSTOP and without Log  
+DECL GLOBAL CONST KRLMSGOPT_T Opt_VLSTOP_NOLOG={VL_STOP TRUE,CLEAR_P_RESET TRUE,LOG_TO_DB FALSE} ;Message option with VLSTOP and without Log  
+DECL GLOBAL CONST KRLMSGOPT_T Opt_NOVLSTOP_LOG={VL_STOP FALSE,CLEAR_P_RESET TRUE,LOG_TO_DB TRUE} ;Message option without VLSTOP and with Log   
+DECL GLOBAL CONST KRLMSGOPT_T Opt_VLSTOP_LOG={VL_STOP TRUE,CLEAR_P_RESET TRUE,LOG_TO_DB TRUE} ;Message option with VLSTOP and with Log  
+;ENDFOLD
+;FOLD Collision device and relieve mechanism
+DECL GLOBAL CONST INT OverrideAfterCollission=10 ;Default
+DECL GLOBAL BOOL bCollisionDetected=FALSE
+DECL GLOBAL BOOL bRelieveMsgSent=FALSE
+DECL GLOBAL INT iCollisionStateMsgHandle=0 ;Global for debugging: 0=> No Handle exists
+DECL GLOBAL INT iCollisionDlgMsgHandle=0 ;Global for debugging: 0=> No Handle exists
+DECL GLOBAL INT ATBg_InputNrCollision=0
+DECL GLOBAL INT ATBg_OutputNrCollision=0
+DECL GLOBAL INT BufferCounter=0
+DECL GLOBAL BOOL bDlgMessageFired=FALSE
+DECL GLOBAL BOOL bRobotIsFree=TRUE
+DECL GLOBAL BOOL bFreeMoveActivated=FALSE
+DECL GLOBAL BOOL bCollNotifyMsgFired=FALSE
+
+DECL KRLMSG_T Dlg_msg
+DECL KRLMSGPAR_T Dlg_par[3]
+DECL KRLMSGOPT_T Dlg_opt
+DECL KRLMSGDLGSK_T Dlg_SK[7]
+DECL INT iDlg_nHandle=0
+DECL INT iDlg_keynumber=-1
+;ENDFOLD
+;FOLD Weaving
+DECL GLOBAL BOOL ATBg_WeavingEnabled=TRUE
+;ENDFOLD
+;FOLD ToolDirection
+DECL GLOBAL AXIS_OF_COORDINATES ATBg_KSSToolDirection=#X
+;ENDFOLD
+DECL GLOBAL INT gSignalChannel1AdvM=0
+DECL GLOBAL INT gSignalChannel2AdvM=2
+DECL GLOBAL INT gSignalChannel3AdvM=0
+DECL GLOBAL INT gSignalChannel4AdvM=0
+DECL GLOBAL INT gSignalChannel5AdvM=0
+DECL GLOBAL INT gSignalChannel6AdvM=0
+DECL GLOBAL INT gSignalChannel7AdvM=0
+DECL GLOBAL INT gSignalChannel8AdvM=0
+DECL GLOBAL INT gOperatingModeAdvM=1
+;FOLD
+;ENDFOLD
+ENDDAT

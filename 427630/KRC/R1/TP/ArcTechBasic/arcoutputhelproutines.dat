@@ -1,0 +1,130 @@
+&ACCESS  R
+&COMMENT Output definitions
+&PARAM DISKPATH = TP/ArcTechBasic
+&REL 1
+DEFDAT  arcoutputhelproutines PUBLIC
+;FOLD Enum and Structures
+GLOBAL ENUM ATOg_SwitchMode_T AdvanceStop,InAdvance,StopPulse,FinalState
+GLOBAL ENUM ATOg_TargetState_T SetIO,ResetIo
+GLOBAL STRUC ATOg_Out_T INT OutNr,BOOL InitState,CHAR OutputName[40]
+GLOBAL STRUC ATOg_Group_OUT_T INT Index,REAL PulsTime,BOOL State
+GLOBAL STRUC ATOg_Group_SpecOUT_T INT OutNr,BOOL State,BOOL InitState
+;ENDFOLD
+;FOLD ArcTech Outputs
+DECL GLOBAL CONST INT ATOg_MaxNrOfArcOutputIFC=18
+DECL GLOBAL ATOg_Out_T ATOg_Out[18]
+ATOg_Out[1]={OutNr 2017,InitState FALSE,OutputName[] "Iniciar solda"}
+ATOg_Out[2]={OutNr 2020,InitState FALSE,OutputName[] "Fluxo de gas"}
+ATOg_Out[3]={OutNr 2023,InitState FALSE,OutputName[] "Confirmacao da fonte de corrente"}
+ATOg_Out[4]={OutNr 0,InitState FALSE,OutputName[] "Erro de ignicao"}
+ATOg_Out[5]={OutNr 2022,InitState FALSE,OutputName[] "Fio para frente"}
+ATOg_Out[6]={OutNr 2019,InitState FALSE,OutputName[] "Fio para tras"}
+ATOg_Out[7]={OutNr 0,InitState FALSE,OutputName[] "Saida de bit ativo"}
+ATOg_Out[8]={OutNr 0,InitState FALSE,OutputName[] "Falha coletiva solda"}
+ATOg_Out[9]={OutNr 0,InitState FALSE,OutputName[] "Processo quente"}
+ATOg_Out[10]={OutNr 0,InitState FALSE,OutputName[] "Erro de queima livre"}
+ATOg_Out[11]={OutNr 0,InitState FALSE,OutputName[] "Erro de monitoramento de costura"}
+ATOg_Out[12]={OutNr 0,InitState FALSE,OutputName[] "Erro critico de ignicao"}
+ATOg_Out[13]={OutNr 0,InitState FALSE,OutputName[] "Erro critico de cordao"}
+ATOg_Out[14]={OutNr 0,InitState FALSE,OutputName[] "Deteccao de colisao"}
+ATOg_Out[15]={OutNr 0,InitState FALSE,OutputName[] "Continuacao de processo solicitado"}
+ATOg_Out[16]={OutNr 0,InitState FALSE,OutputName[] "Teste de fixacao do arame por queima"}
+ATOg_Out[17]={OutNr 0,InitState FALSE,OutputName[] "Requeima do arame"}
+ATOg_Out[18]={OutNr 0,InitState FALSE,OutputName[] "Posicao de limpeza PLC"}
+;ENDFOLD
+;FOLD Output Groups and single output signals;%{PE}
+;FOLD Grupo de saida fluxo inicial de gas
+DECL GLOBAL ATOg_Group_OUT_T ATOg_GasPreFlowStart[6]
+ATOg_GasPreFlowStart[1]={Index 2,PulsTime 0.0,State TRUE} ;Fluxo de gs
+ATOg_GasPreFlowStart[2]={Index 3,PulsTime 0.500000,State TRUE} ;Confirmao da fonte de corrente
+ATOg_GasPreFlowStart[3]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_GasPreFlowStart[4]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_GasPreFlowStart[5]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_GasPreFlowStart[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;FOLD Grupo de saida inicio de solda
+DECL GLOBAL ATOg_Group_OUT_T ATOg_WeldStart[6]
+ATOg_WeldStart[1]={Index 1,PulsTime 0.0,State TRUE} ;Iniciar solda
+ATOg_WeldStart[2]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldStart[3]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldStart[4]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldStart[5]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldStart[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;FOLD Grupo de saida erro de ignicao
+DECL GLOBAL ATOg_Group_OUT_T ATOg_IgnitProblem[6]
+ATOg_IgnitProblem[1]={Index 1,PulsTime 0.0,State FALSE} ;Iniciar solda
+ATOg_IgnitProblem[2]={Index 2,PulsTime 0.0,State FALSE} ;Fluxo de gs
+ATOg_IgnitProblem[3]={Index 4,PulsTime 0.0,State TRUE} ;Erro de ignio
+ATOg_IgnitProblem[4]={Index 8,PulsTime 0.0,State TRUE} ;Falha coletiva solda
+ATOg_IgnitProblem[5]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_IgnitProblem[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;FOLD Grupo de saida erros de solda
+DECL GLOBAL ATOg_Group_OUT_T ATOg_WeldProblem[6]
+ATOg_WeldProblem[1]={Index 1,PulsTime 0.0,State FALSE} ;Iniciar solda
+ATOg_WeldProblem[2]={Index 2,PulsTime 0.0,State FALSE} ;Fluxo de gs
+ATOg_WeldProblem[3]={Index 11,PulsTime 0.0,State TRUE} ;Erro de monitoramento de costura
+ATOg_WeldProblem[4]={Index 8,PulsTime 0.0,State TRUE} ;Falha coletiva solda
+ATOg_WeldProblem[5]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldProblem[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;FOLD Grupo de saida confirmacao erro
+DECL GLOBAL ATOg_Group_OUT_T ATOg_ReceiptError[6]
+ATOg_ReceiptError[1]={Index 3,PulsTime 0.500000,State TRUE} ;Confirmao da fonte de corrente
+ATOg_ReceiptError[2]={Index 4,PulsTime 0.0,State FALSE} ;Erro de ignio
+ATOg_ReceiptError[3]={Index 8,PulsTime 0.0,State FALSE} ;Falha coletiva solda
+ATOg_ReceiptError[4]={Index 11,PulsTime 0.0,State FALSE} ;Erro de monitoramento de costura
+ATOg_ReceiptError[5]={Index 10,PulsTime 0.0,State FALSE} ;Erro de queima livre
+ATOg_ReceiptError[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;FOLD Grupo de saida fim da solda
+DECL GLOBAL ATOg_Group_OUT_T ATOg_WeldEnd[6]
+ATOg_WeldEnd[1]={Index 1,PulsTime 0.0,State FALSE} ;Iniciar solda
+ATOg_WeldEnd[2]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldEnd[3]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldEnd[4]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldEnd[5]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_WeldEnd[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;FOLD Grupo de saida fluxo final de gas
+DECL GLOBAL ATOg_Group_OUT_T ATOg_GasPostFlowEnd[6]
+ATOg_GasPostFlowEnd[1]={Index 2,PulsTime 0.0,State FALSE} ;Fluxo de gs
+ATOg_GasPostFlowEnd[2]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_GasPostFlowEnd[3]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_GasPostFlowEnd[4]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_GasPostFlowEnd[5]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_GasPostFlowEnd[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;FOLD Grupo de saida antes do afastamento do cordao de solda
+DECL GLOBAL ATOg_Group_OUT_T ATOg_ClearErrorArcOff[6]
+ATOg_ClearErrorArcOff[1]={Index 2,PulsTime 0.0,State FALSE} ;Fluxo de gs
+ATOg_ClearErrorArcOff[2]={Index 4,PulsTime 0.0,State FALSE} ;Erro de ignio
+ATOg_ClearErrorArcOff[3]={Index 11,PulsTime 0.0,State FALSE} ;Erro de monitoramento de costura
+ATOg_ClearErrorArcOff[4]={Index 8,PulsTime 0.0,State FALSE} ;Falha coletiva solda
+ATOg_ClearErrorArcOff[5]={Index 0,PulsTime 0.0,State FALSE}
+ATOg_ClearErrorArcOff[6]={Index 0,PulsTime 0.0,State FALSE}
+;ENDFOLD
+;ENDFOLD
+;FOLD Separate indexed output signals
+DECL GLOBAL ATOg_Group_OUT_T ATOg_WireFeedForward={Index 5,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_WireFeedBackward={Index 6,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_WatchDogAlive={Index 7,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_BurnFreeFault={Index 10,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_CriticalIgnitError={Index 12,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_CriticalSeamError={Index 13,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_CollisionDetect={Index 14,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_DecisionRequest={Index 15,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_WireDetectRequest={Index 16,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_BurnBack={Index 17,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_PLC_CleanPosition={Index 18,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_GasActive={Index 2,PulsTime 0.0,State TRUE}
+DECL GLOBAL ATOg_Group_OUT_T ATOg_AcknowledgePS={Index 3,PulsTime 0.0,State TRUE}
+;ENDFOLD
+;FOLD ArcTech Outputs Extra Options
+DECL GLOBAL ATOg_Group_SpecOUT_T ATOg_SpecOut[3,1]
+ATOg_SpecOut[1,1]={OutNr 0,State FALSE,InitState FALSE} ;Funo especial 1
+ATOg_SpecOut[2,1]={OutNr 0,State FALSE,InitState FALSE} ;Funo especial 1
+ATOg_SpecOut[3,1]={OutNr 0,State FALSE,InitState FALSE} ;Funo especial 1
+;ENDFOLD
+ENDDAT

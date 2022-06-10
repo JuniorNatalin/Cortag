@@ -1,0 +1,590 @@
+&ACCESS  R
+&COMMENT ATB Output routines
+DEF  ArcOutputRoutines( )        
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;----------------------------------
+;Clear arc outputs at program reset 
+;----------------------------------
+GLOBAL DEF ATO_ClearArcOutputs()
+;FOLD Details
+DECL INT i 
+
+  FOR i=1 TO ATOg_MaxNrOfArcOutputIFC
+    IF (ATOg_Out[i].OutNr>0)THEN 
+      $OUT[ATOg_Out[i].OutNr]=ATOg_Out[i].InitState
+    ENDIF
+  ENDFOR
+  IF (ATBg_PowerSourceType==#ARCLINKXT) THEN
+    ATO_SetParamsToSignals(1, 0)
+    ATO_SetParamsToSignals(2, 0)
+    ATO_SetParamsToSignals(3, 0)
+    ATO_SetParamsToSignals(4, 0)
+    ATO_SetParamsToSignals(5, 0)
+    ATO_SetParamsToSignals(6, 0)
+    ATO_SetParamsToSignals(7, 0)
+    ATO_SetParamsToSignals(8, 0)
+  ENDIF
+;ENDFOLD
+END ;(ATO_ClearArcOutputs)
+;-------------------------------------
+;Clear Special outputs for PowerSource
+;-------------------------------------
+GLOBAL DEF ATO_ClearArcSpecOuts()
+;FOLD Details
+;FOLD Declarations
+DECL INT iFindSpecOut, iArcMode, iNrSpecOut
+DECL INT NrSpecOut
+DECL INT TempSpecOut
+DECL BOOL ErrorCheck
+;ENDFOLD
+;FOLD Implementation
+  ;Reset Special Outputs for power source
+  FOR iArcMode = 1 TO ATA_GetMaxIndexOfMode()
+    ;Find Number of Special Outputs
+    FOR iFindSpecOut = 1 TO 100
+      ON_ERROR_PROCEED
+      ErrorCheck = ATOg_SpecOut[iArcMode, iFindSpecOut].InitState ;Initialization state
+      IF $ERR.NUMBER > 0 THEN
+        ERR_CLEAR($ERR)
+        EXIT
+      ELSE
+        ;Active settings of special functions
+        NrSpecOut = iFindSpecOut
+        FOR iNrSpecOut = 1 TO NrSpecOut
+          TempSpecOut = ATOg_SpecOut[iArcMode,iNrSpecOut].OutNr
+          IF (TempSpecOut > 0)THEN
+            $OUT[TempSpecOut] = ATOg_SpecOut[iArcMode,iNrSpecOut].InitState
+          ENDIF
+        ENDFOR
+      ENDIF
+    ENDFOR
+  ENDFOR
+;ENDFOLD
+;ENDFOLD
+END ;(ATO_ClearArcSpecOuts)
+;-------------------------------
+;Clear all error signals on seam
+;-------------------------------
+GLOBAL DEF ATO_ClearAllErrorSignals()
+;FOLD Details
+;ATOg_SetIO_Group(ATOg_ClearErrorArcOff[],#AdvanceStop)
+;ATOg_SetOneSignal(ATOg_IgnitionFault,#ResetIO)
+;ATOg_SetOneSignal(ATOg_CollectionFault,#ResetIO)
+;ATOg_SetOneSignal(ATOg_BurnFreeFault,#ResetIO)  
+;ATOg_SetOneSignal(ATOg_SeamControlFault,#ResetIO)
+ATOg_SetOneSignal(ATOg_CriticalIgnitError,#ResetIO)
+ATOg_SetOneSignal(ATOg_CriticalSeamError,#ResetIO)
+ATOg_SetOneSignal(ATOg_WireDetectRequest, #ResetIO)
+ATOg_SetOneSignal(ATOg_Burnback,#ResetIO)
+WF_SetOneSignal(ATOg_GasActive,#ResetIO) 
+;ENDFOLD 
+END ;(ATO_ClearAllErrorSignals)
+;----------------------------
+;Set or reset of one signal
+;Pulse or none pulse
+;Only with advance stop
+;----------------------------
+GLOBAL DEF ATOg_SetOneSignal(IndexedOut1Object:IN,TargetState:IN)
+;FOLD Details;%{PE}
+;Always advance stop
+;FOLD Declarations
+DECL ATOg_Group_OUT_T IndexedOut1Object
+DECL ATOg_TargetState_T TargetState  ;#SetIO,ResetIO
+DECL BOOL State
+DECL INT  TableIndex,PhysicalOutNr
+;ENDFOLD
+;FOLD Implementation
+  State=(TargetState==#SetIO)
+  IF(IndexedOut1Object.State==FALSE)THEN
+    State=NOT(State)
+  ENDIF
+  
+  TableIndex=ABS(IndexedOut1Object.Index)
+  IF (TableIndex>0) THEN
+    PhysicalOutNr=ABS(ATOg_Out[TableIndex].OutNr)
+    IF (PhysicalOutNr>0) THEN
+      IF (IndexedOut1Object.PulsTime>0) THEN    
+        PULSE($OUT[PhysicalOutNr],State,(IndexedOut1Object.PulsTime))
+      ELSE
+        $OUT[PhysicalOutNr]=State
+      ENDIF
+    ENDIF
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(ATOg_SetOneSignal)
+;---------------------------------------------
+;Sets a group of binary outputs 
+;positive / negative logic
+;Results depends upon configuration
+;Pulse or none pulse, with advance stop or not
+;---------------------------------------------
+GLOBAL DEF ATOg_SetIO_Group(Group[]:OUT,SwitchModi:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL ATOg_Group_OUT_T Group[]
+  DECL ATOg_SwitchMode_T SwitchModi ;#AdvanceStop,InAdvance,StopPulse,FinalState
+  DECL INT i,IndexOfTable,PhysicalOutNr
+  ;ENDFOLD
+  ;FOLD Implementation
+  FOR i=1 TO 6
+    IF (Group[i].Index>0) THEN
+      IndexOfTable=ABS(Group[i].Index)
+      IF (IndexOfTable>0) THEN
+        PhysicalOutNr=ABS(ATOg_Out[IndexOfTable].OutNr)
+        IF (IndexOfTable<=ATOg_MaxNrOfArcOutputIFC) THEN
+          IF (PhysicalOutNr>0) THEN ;binary output is configured
+            IF (Group[i].PulsTime==0.0) THEN
+              SWITCH SwitchModi
+                CASE #AdvanceStop
+                  $OUT[PhysicalOutNr]=Group[i].State
+                CASE #InAdvance
+                  IF ($ERR.Interpreter<>#S_Int) THEN
+                    CONTINUE
+                    $OUT[PhysicalOutNr]=Group[i].State
+                  ELSE
+                    $OUT[PhysicalOutNr]=Group[i].State
+                  ENDIF        
+                CASE #StopPulse ; only because symmetry
+                  IF ($ERR.Interpreter<>#S_Int) THEN
+                    CONTINUE
+                    $OUT[PhysicalOutNr]=Group[i].State
+                  ELSE
+                    $OUT[PhysicalOutNr]=Group[i].State
+                  ENDIF
+                CASE #FinalState
+                  $OUT[PhysicalOutNr]= NOT(Group[i].State) ;Signal state conversion
+                DEFAULT
+              ENDSWITCH
+            ELSE
+              SWITCH SwitchModi
+                CASE #AdvanceStop,#FinalState
+                  PULSE($OUT[PhysicalOutNr],Group[i].State,ABS(Group[i].PulsTime))
+                CASE #InAdvance
+                  IF ($ERR.Interpreter<>#S_Int) THEN
+                    CONTINUE
+                    PULSE($OUT[PhysicalOutNr],Group[i].State,ABS(Group[i].PulsTime))
+                  ELSE
+                    PULSE($OUT[PhysicalOutNr],Group[i].State,ABS(Group[i].PulsTime))
+                  ENDIF
+                CASE #StopPulse
+                  IF ($ERR.Interpreter<>#S_Int) THEN
+                     $OUT[PhysicalOutNr]=Group[i].State
+                     WAIT SEC ABS(Group[i].PulsTime)
+                     $OUT[PhysicalOutNr]=NOT(Group[i].State)
+                  ELSE
+                     PULSE($OUT[PhysicalOutNr],Group[i].State,ABS(Group[i].PulsTime))
+                  ENDIF
+                DEFAULT
+              ENDSWITCH
+            ENDIF
+          ENDIF
+        ENDIF
+      ENDIF ;(IndexOfTable>0)
+    ENDIF ;(Group Index>0
+  ENDFOR
+  ;ENDFOLD
+  ;ENDFOLD
+END ;(ATOg_SetIO_Group)
+;-----------------------------------------------
+;Sets value to Signal group,checking of allowed 
+;maximum. Message at problem with index of channel
+;-----------------------------------------------
+GLOBAL DEF ATO_SetParamsToSignals(ArcChannel:IN,IntValueForSignals:IN)
+;FOLD Writing to Signals and check;%{PE}
+  ;FOLD Declaration
+DECL INT ArcChannel
+DECL INT IntValueForSignals
+DECL CHAR STRDEST[60]
+DECL INT Offset
+DECL SIGINF SignalOutInfo
+;ENDFOLD
+  ;FOLD Implementation
+  SWITCH ArcChannel
+    CASE 1
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel1")    
+    CASE 2
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel2")
+    CASE 3
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel3") 
+    CASE 4
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel4")    
+    CASE 5
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel5")
+    CASE 6
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel6")   
+    CASE 7
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel7")    
+    CASE 8
+      SignalOutInfo=GET_SIG_INF("ATO_SignalChannel8")
+  ENDSWITCH
+  
+  ;Signal width and maximum of valid data calculated as before
+  IF SignalOutInfo.IDX < 8192 THEN
+   IF (IntValueForSignals<=GetMaxNumberAtBitWidth(SignalOutInfo.LEN))THEN  
+    SWITCH ArcChannel
+      CASE 1
+        ATO_SignalChannel1=IntValueForSignals
+      CASE 2
+        ATO_SignalChannel2=IntValueForSignals
+      CASE 3
+        ATO_SignalChannel3=IntValueForSignals
+      CASE 4
+        ATO_SignalChannel4=IntValueForSignals
+      CASE 5
+        ATO_SignalChannel5=IntValueForSignals
+      CASE 6
+        ATO_SignalChannel6=IntValueForSignals
+      CASE 7
+        ATO_SignalChannel7=IntValueForSignals
+      CASE 8
+        ATO_SignalChannel8=IntValueForSignals   
+    ENDSWITCH
+   ELSE
+    Offset=ATB_IntToString(STRDEST[],ArcChannel)
+    Offset = StrAdd(STRDEST[], " ,")
+    Offset = StrAdd(STRDEST[],ATBg_SeamName[])
+    ArcMsgNotify("SignalToWriteIsTooBig","ATB", , STRDEST[],10251,Opt_NOVLSTOP_LOG)
+   ENDIF
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(ATO_SetParamsToSignals)
+;--------------------------------------------
+;Calculates maximal number by known bit width
+;Copy from KLM_MathLib
+;--------------------------------------------
+DEFFCT INT GetMaxNumberAtBitWidth(BitWidth:IN)
+;FOLD Details
+DECL INT BitWidth
+DECL INT Idx,MaximumNr
+  MaximumNr=0
+  FOR Idx=1 TO BitWidth
+    MaximumNr=MaximumNr*2+1
+  ENDFOR
+  RETURN(MaximumNr)
+;ENDFOLD
+ENDFCT ;(GetMaxNumberAtBitWidth)
+;-----------------------------------------
+;Setting of ArcMode
+;Setting of special function outputs
+;Delay at TPSi Source at parameter change
+;----------------------------------------
+GLOBAL DEF ATO_SetArcMode(IndexOfArcMode:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declaration
+DECL INT IndexOfArcMode
+DECL INT i
+DECL INT NrSpecOut
+DECL INT TempSpecOut
+DECL BOOL ErrorCheckNrSpecOut
+DECL SIGINF SignalOutInfo
+DECL CHAR STRDEST[60]
+DECL INT Offset
+;ENDFOLD
+;FOLD Implementation
+  ;Signal width
+  SignalOutInfo=GET_SIG_INF("ATO_OperatingMode") 
+  IF ((ABS(IndexOfArcMode)>0)AND(ABS(IndexOfArcMode)<=ATA_GetMaxIndexOfMode()))THEN
+    IF ((ATAg_ArcModiCoding[IndexOfArcMode].Coding <= GetMaxNumberAtBitWidth(SignalOutInfo.LEN))AND(ATAg_ArcModiCoding[IndexOfArcMode].InUse==TRUE))THEN
+      ;FOLD Setting of Special Outputs for power source
+      ;Set all Special Outputs to Init State
+       ATO_ClearArcSpecOuts()
+      ;Find maximum number of special outputs
+      FOR i = 1 TO 100
+       ON_ERROR_PROCEED
+       ErrorCheckNrSpecOut = ATOg_SpecOut[IndexOfArcMode, i].State
+       IF $ERR.NUMBER > 0 THEN
+        NrSpecOut = i - 1
+        ERR_CLEAR($ERR)
+        EXIT
+       ENDIF
+      ENDFOR
+  
+      ;Write Special Outputs
+      FOR i = 1 TO NrSpecOut
+       TempSpecOut = ATOg_SpecOut[IndexOfArcMode,i].OutNr
+       IF (TempSpecOut > 0)THEN
+        ;Set the increased function outputs
+        $OUT[TempSpecOut] = ATOg_SpecOut[IndexOfArcMode,i].State
+       ENDIF
+      ENDFOR
+      ;ENDFOLD
+      ATO_OperatingMode=ATAg_ArcModiCoding[IndexOfArcMode].Coding
+      
+      IF (ATBg_PowerSourceType==#FRONIUS_TPSI) THEN
+        WAIT SEC TPSi_ArcModeRecoveryTime ;1-2 IPO
+      ENDIF
+    ELSE
+      Offset=StrAdd(STRDEST[], "ATO_OperatingMode: ")
+      Offset=ATB_IntToString(STRDEST[],IndexOfArcMode)
+      Offset = StrAdd(STRDEST[], "  : ")
+      Offset = StrAdd(STRDEST[],ATBg_SeamName[])
+
+      IF ((IndexOfArcMode<=ATA_GetMaxIndexOfMode()) AND(IndexOfArcMode>0))THEN
+        IF (ATAg_ArcModiCoding[IndexOfArcMode].InUse==FALSE)THEN
+          ATO_ClearArcSpecOuts()
+          ArcMsgNotify("UnConfiguredArcModeInUse","ATB", , STRDEST[],10292,Opt_NOVLSTOP_LOG)
+        ELSE
+          ArcMsgNotify("SignalToWriteArcModeIsTooBig","ATB", , STRDEST[],10263,Opt_NOVLSTOP_LOG)
+        ENDIF
+      ELSE
+        ATO_ClearArcSpecOuts()
+      ENDIF
+    ENDIF
+  ELSE
+    IF (IndexOfArcMode>0) THEN
+      IF (ATAg_ArcModiCoding[IndexOfArcMode].InUse==FALSE) THEN
+        ATO_ClearArcSpecOuts()
+      ENDIF
+    ELSE
+      ArcMsgQuit("ArcModeZeroNotavailable","ATB",,ATBg_SeamName[],10252,Opt_VLSTOP_LOG)
+    ENDIF
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(ATO_SetArcMode) 
+;--------------------------------------------------
+;Sources: TPSi, ArcLinkXT keep the values
+;Depending upon option: ATBg_ClearChannels
+;Resetting of OperatingMode
+;Resetting of all Channels
+;Resetting of special function outputs
+;---------------------------------------------------
+GLOBAL DEF ATO_ClearChannels()
+;FOLD Details;%{PE}
+;FOLD Declarations
+INT ChannelCounter
+;ENDFOLD
+;FOLD Implementation
+ATO_ClearArcSpecOuts()
+IF ((ATBg_ClearChannels == TRUE) AND (ATBg_PowerSourceType<>#ARCLINKXT) AND (ATBg_PowerSourceType<>#FRONIUS_TPSI)) THEN
+ ATO_OperatingMode=0
+ FOR ChannelCounter=1 TO 8
+  ATO_SetParamsToSignals(ChannelCounter, 0)
+ ENDFOR
+ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(ATO_ResetArcMode) 
+;----------------------------
+;Set or reset of one signal
+;Pulse or none pulse
+;Only with advance stop
+;----------------------------
+GLOBAL DEF ATOg_TStopSetOneSignal(IndexedOut1Object:IN,TargetState:IN)
+;FOLD Details;%{PE}
+;Always advance stop
+;FOLD Declarations
+DECL ATOg_Group_OUT_T IndexedOut1Object
+DECL ATOg_TargetState_T TargetState  ;#SetIO,ResetIO
+DECL BOOL State
+DECL INT  TableIndex,PhysicalOutNr
+;ENDFOLD
+;FOLD Implementation
+  State=(TargetState==#SetIO)
+  IF(IndexedOut1Object.State==FALSE)THEN
+    State=NOT(State)
+  ENDIF
+  
+  TableIndex=ABS(IndexedOut1Object.Index)
+  IF (TableIndex>0) THEN
+    PhysicalOutNr=ABS(ATOg_Out[TableIndex].OutNr)
+    IF (PhysicalOutNr>0) THEN
+      IF (IndexedOut1Object.PulsTime>=0) THEN    
+        PULSE($OUT[PhysicalOutNr],State,(IndexedOut1Object.PulsTime))
+      ELSE
+        PULSE($OUT[PhysicalOutNr],State,0.0)
+      ENDIF
+    ENDIF
+  ENDIF
+;ENDFOLD
+;ENDFOLD
+END ;(ATOg_TStopSetOneSignal)
+;--------------------------------------
+; Set Channels Global for AdvMonitoring
+;--------------------------------------
+GLOBAL DEF ATOg_SetChannelsGlobal()
+;FOLD Declarations
+DECL SIGINF SignalInfo
+;ENDFOLD
+;FOLD Implementation
+SignalInfo=GET_SIG_INF("ATO_SignalChannel1")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel1AdvM = ATO_SignalChannel1
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_SignalChannel2")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel2AdvM = ATO_SignalChannel2
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_SignalChannel3")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel3AdvM = ATO_SignalChannel3
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_SignalChannel4")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel4AdvM = ATO_SignalChannel4
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_SignalChannel5")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel5AdvM = ATO_SignalChannel5
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_SignalChannel6")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel6AdvM = ATO_SignalChannel6
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_SignalChannel7")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel7AdvM = ATO_SignalChannel7
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_SignalChannel8")
+IF SignalInfo.IDX < 8192 THEN
+ gSignalChannel8AdvM = ATO_SignalChannel8
+ENDIF
+SignalInfo=GET_SIG_INF("ATO_OperatingMode")
+IF SignalInfo.IDX < 8192 THEN
+ gOperatingModeAdvM = ATO_OperatingMode
+ENDIF
+;ENDFOLD
+END ;(ATOg_SetChannelGlobal)
+;-----------------------------------
+;Set the signal for velocity transfer
+;-----------------------------------
+GLOBAL DEF ATO_SetSignalVelTrans(IntValueForSignal:IN)
+  ;FOLD Declaration
+DECL INT IntValueForSignal
+;ENDFOLD
+  ;FOLD Implementation
+    ATO_SignalVelTrans=IntValueForSignal 
+;ENDFOLD
+END ;(ATO_SetSignalVelTrans)
+
+ 
+;-----------------------------------
+;Get the signal value for velocity transfer
+;-----------------------------------
+GLOBAL DEFFCT INT ATO_GetSignalVelTrans()
+  ;FOLD Declaration
+DECL INT IntValueForSignal
+  ;ENDFOLD
+  ;FOLD Implementation
+  IntValueForSignal=ATO_SignalVelTrans
+  RETURN(IntValueForSignal)
+;ENDFOLD
+ENDFCT ;(ATO_GetSignalVelTrans)
+
+
+;-----------------------------------
+;Get the signal width for velocity transfer
+;-----------------------------------
+GLOBAL DEFFCT INT GetSignalWidthVelTrans()
+  ;FOLD Declaration
+DECL SIGINF SignalOutInfo
+DECL INT IntValueForSignal
+  ;ENDFOLD
+  ;FOLD Implementation
+  SignalOutInfo=GET_SIG_INF("ATO_SignalVelTrans")
+  RETURN(SignalOutInfo.LEN)
+;ENDFOLD
+ENDFCT ;(GetSignalWidthVelTrans) 
+
+
+;------------------------------------------
+;Calls the routine for loading and starting 
+;a timer for flying gas flow mechanism
+;------------------------------------------
+GLOBAL DEF ATOg_SetGas(StartSet:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+DECL ATBg_Start_T StartSet
+;ENDFOLD
+  ;FOLD Implementation
+  ATBg_RestartCondClosed=FALSE
+  ATBg_FlyingGasActive=FALSE
+  IF(ATB_WeldRequest()==TRUE) AND (ATAg_ER_ErrorOnSeam==FALSE) THEN
+    IF(ATI_LimWaitForIO_Group(ATIg_RdyWeldSource[],0.0,#SourcePoweredUp)==FALSE)THEN
+      ATB_Timer(ATBg_PurgeTimer,#TimerStop,(StartSet.PurgeTime*1000))
+      ArcMsgNotify("FlyingPreGasNotPossible","ATB",,,10309,Opt_NOVLSTOP_LOG)
+    ELSE
+      IF RobotReadyForWeld() == TRUE THEN
+        IF ATI_PeripheryReadyToWeld() == TRUE THEN
+          ATB_Timer(ATBg_PurgeTimer,#LoadAndStart,(StartSet.PurgeTime*1000))
+          ATOg_SetIO_Group(ATOg_GasPreFlowStart[],#AdvanceStop)
+          ATBg_FlyingGasActive=TRUE
+        ELSE
+          ATB_Timer(ATBg_PurgeTimer,#TimerStop,(StartSet.PurgeTime*1000))
+          ArcMsgNotify("FlyingPreGasNotPossible","ATB",,,10309,Opt_NOVLSTOP_LOG)
+        ENDIF
+      ELSE
+        ATB_Timer(ATBg_PurgeTimer,#TimerStop,(StartSet.PurgeTime*1000))
+        ArcMsgNotify("FlyingPreGasNotPossible","ATB",,,10309,Opt_NOVLSTOP_LOG)
+      ENDIF
+    ENDIF
+  ENDIF
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD
+END ;(ATOg_SetGas) 
+;-----------------------------------
+;Get the signal width
+;-----------------------------------
+GLOBAL DEFFCT INT GetSignalWidth(SignalNr:IN)
+  ;FOLD Declaration
+DECL SIGINF SignalOutInfo
+DECL INT SignalNr
+  ;ENDFOLD
+  ;FOLD Implementation
+SWITCH SignalNr
+CASE 1
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel1")
+CASE 2
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel2")
+CASE 3
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel3")
+CASE 4
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel4")
+CASE 5
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel5")
+CASE 6
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel6")
+CASE 7
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel7")
+CASE 8
+  SignalOutInfo=GET_SIG_INF("ATO_SignalChannel8")
+ENDSWITCH
+  RETURN(SignalOutInfo.LEN)
+;ENDFOLD
+ENDFCT ;(GetSignalWidth) 
+;-----------------------------------
+;Get the signal value
+;-----------------------------------
+GLOBAL DEFFCT REAL GetSignalValue(SignalNr:IN)
+  ;FOLD Declaration
+DECL REAL SignalValue
+DECL INT SignalNr
+  ;ENDFOLD
+  ;FOLD Implementation
+SWITCH SignalNr
+CASE 1
+   SignalValue = ATO_SignalChannel1
+CASE 2
+   SignalValue = ATO_SignalChannel2
+CASE 3
+   SignalValue = ATO_SignalChannel3
+CASE 4
+   SignalValue = ATO_SignalChannel4
+CASE 5
+   SignalValue = ATO_SignalChannel5
+CASE 6
+   SignalValue = ATO_SignalChannel6
+CASE 7
+   SignalValue = ATO_SignalChannel7
+CASE 8
+   SignalValue = ATO_SignalChannel8
+ENDSWITCH
+  RETURN(SignalValue)
+;ENDFOLD
+ENDFCT ;(GetSignalValue) 

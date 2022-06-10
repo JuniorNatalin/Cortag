@@ -1,0 +1,350 @@
+&ACCESS  R
+&COMMENT ATB Message proxy
+DEF  ArcMsgProxy ( )
+  ;*********************************
+  ;* Package:     ArcTechBasic     *
+  ;* Release      V1.5             *
+  ;*********************************
+END
+;*****************************************************************************************
+;call for notify message
+;*****************************************************************************************
+GLOBAL DEF ArcMsgNotify(sText[]:IN, sModul[]:IN, nNumPar:IN, sTextPar[]:IN, nMsgNr:IN, MsgOpt:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL CHAR sText[], sModul[], sTextPar[]   
+  DECL KrlMsgOpt_T MsgOpt
+  DECL INT nNumPar, nMsgNr
+  ;ENDFOLD
+  ;FOLD Implementation
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  MsgOpt=MsgOpt  
+  IF ($ERR.Number<>0) THEN
+    MsgOpt={VL_Stop TRUE,Clear_P_Reset TRUE,Log_To_DB FALSE}
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  nMsgNr=nMsgNr  
+  IF ($ERR.Number<>0) THEN
+    nMsgNr=1
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF 
+  ;initializes sText depending on whether it is initialized or not
+  IF  STRLEN(sText[])<1 THEN
+    sText[]="parameter sText[] is missing"
+  ENDIF
+  ;initializes sModul depending on whether it is initialized or not 
+  IF  STRLEN(sModul[])<1 THEN
+    sModul[]="Appl" 
+  ENDIF
+  ;gives out a notify message depending on whether nNumPar and sTextPar are initialized
+  ON_ERROR_PROCEED 
+  nNumPar=nNumPar  
+  IF ($ERR.Number<>0) THEN; no nNumPar
+    ERR_CLEAR($ERR)
+    IF  STRLEN(sTextPar[])>0 THEN ;sTextPar[] exists
+      MsgNotify(sText[], sModul[], , sTextPar[], nMsgNr, MsgOpt)
+    ELSE ;no sTextPar[]
+      MsgNotify(sText[], sModul[], , , nMsgNr, MsgOpt)
+    ENDIF      
+  ELSE;nNumPar exists
+    ERR_RAISE($ERR)
+    MsgNotify(sText[], sModul[], nNumPar, , nMsgNr, MsgOpt)
+  ENDIF
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD  
+END ;(ArcMsgNotify)
+;*****************************************************************************************
+;call for the quit message
+;*****************************************************************************************
+GLOBAL DEF ArcMsgQuit(sText[]:IN, sModul[]:IN, nNumPar:IN, sTextPar[]:IN, nMsgNr:IN, MsgOpt:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL CHAR sText[], sModul[], sTextPar[]   
+  DECL KrlMsgOpt_T MsgOpt
+  DECL INT nNumPar, nMsgNr
+  ;ENDFOLD
+  ;FOLD Implementation
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  MsgOpt=MsgOpt  
+  IF ($ERR.Number<>0) THEN
+    MsgOpt={VL_Stop TRUE,Clear_P_Reset TRUE,Log_To_DB FALSE}
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  nMsgNr=nMsgNr  
+  IF ($ERR.Number<>0) THEN
+    nMsgNr=1
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF 
+  ;initializes sText depending on whether it is initialized or not
+  IF  STRLEN(sText[])<1 THEN
+    sText[]="parameter sText[] is missing"
+  ENDIF
+  ;initializes sModul depending on whether it is initialized or not 
+  IF  STRLEN(sModul[])<1 THEN
+    sModul[]="Appl" 
+  ENDIF
+  ;gives out a quitt message depending on whether nNumPar and sTextPar are initialized
+  ON_ERROR_PROCEED 
+  nNumPar=nNumPar  
+  IF ($ERR.Number<>0) THEN; no nNumPar
+    ERR_CLEAR($ERR)
+    IF  STRLEN(sTextPar[])>0 THEN ;sTextPar[] exists
+      MsgQuit(sText[], sModul[], , sTextPar[], nMsgNr, MsgOpt)
+    ELSE ;no sTextPar[]
+      MsgQuit(sText[], sModul[], , , nMsgNr, MsgOpt)
+    ENDIF      
+  ELSE;nNumPar exists
+    ERR_RAISE($ERR)
+    MsgQuit(sText[], sModul[], nNumPar, , nMsgNr, MsgOpt)
+  ENDIF
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD 
+END ;(ArcMsgQuit)
+;*****************************************************************************************
+;call for the state message
+;*****************************************************************************************
+GLOBAL DEF ArcMsgState(nHandle:OUT, sText[]:IN, sModul[]:IN, nNumPar:IN, sTextPar[]:IN, nMsgNr:IN, MsgOpt:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL CHAR sText[], sModul[], sTextPar[]   
+  DECL KrlMsgOpt_T MsgOpt
+  DECL INT nNumPar, nMsgNr, nHandle
+  ;ENDFOLD
+  ;FOLD Implementation
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  MsgOpt=MsgOpt  
+  IF ($ERR.Number<>0) THEN
+    MsgOpt={VL_Stop TRUE,Clear_P_Reset TRUE,Log_To_DB FALSE}
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  nMsgNr=nMsgNr  
+  IF ($ERR.Number<>0) THEN
+    nMsgNr=1
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF 
+  ;initializes sText depending on whether it is initialized or not
+  IF  STRLEN(sText[])<1 THEN
+    sText[]="parameter sText[] is missing"
+  ENDIF
+  ;initializes sModul depending on whether it is initialized or not 
+  IF  STRLEN(sModul[])<1 THEN
+    sModul[]="Appl" 
+  ENDIF
+  ;gives out a state message depending on whether nNumPar and sTextPar are initialized
+  ON_ERROR_PROCEED 
+  nNumPar=nNumPar  
+  IF ($ERR.Number<>0) THEN; no nNumPar
+    ERR_CLEAR($ERR)
+    IF  STRLEN(sTextPar[])>0 THEN ;sTextPar[] exists
+      MsgState(nHandle, sText[], sModul[], , sTextPar[], nMsgNr, MsgOpt)
+    ELSE ;no sTextPar[]
+      MsgState(nHandle, sText[], sModul[], , , nMsgNr, MsgOpt)
+    ENDIF      
+  ELSE;nNumPar exists
+    ERR_RAISE($ERR)
+    MsgState(nHandle, sText[], sModul[], nNumPar, , nMsgNr, MsgOpt)
+  ENDIF
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD 
+END ;(ArcMsgState)
+;*****************************************************************************************
+;call for the loop message
+;*****************************************************************************************
+GLOBAL DEF ArcMsgLoop(sText[]:IN,sModul[]:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL CHAR sText[], sModul[] 
+  ;ENDFOLD
+  ;FOLD Implementation
+  ;initializes sText depending on whether it is initialized or not
+  IF  STRLEN(sText[])<1 THEN
+    sText[]="parameter sText[] is missing"
+  ENDIF
+  ;initializes sModul depending on whether it is initialized or not 
+  IF  STRLEN(sModul[])<1 THEN
+    sModul[]="Appl" 
+  ENDIF
+  ;gives out a loop message
+  MsgLoop(sText[],sModul[])
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD 
+END ;(ArcMsgLoop)
+;*****************************************************************************************
+;call for dialog message
+;*****************************************************************************************
+GLOBAL DEF ArcMsgDialog(nAnswer:OUT,sText[]:IN,sModul[]:IN,sTextPar[]:IN,sDialogSK1[]:IN,sDialogSK2[]:IN,sDialogSK3[]:IN,sDialogSK4[]:IN,sDialogSK5[]:IN,sDialogSK6[]:IN,sDialogSK7[]:IN,NoBrakes:IN, nMsgNr:IN, MsgOpt:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL CHAR sText[], sModul[], sTextPar[], sDialogSK1[], sDialogSK2[], sDialogSK3[], sDialogSK4[], sDialogSK5[], sDialogSK6[], sDialogSK7[]  
+  DECL KrlMsgOpt_T MsgOpt
+  DECL INT nAnswer, nNumPar, nMsgNr
+  DECL BOOL NoBrakes
+  ;ENDFOLD
+  ;FOLD Implementation
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  MsgOpt=MsgOpt  
+  IF ($ERR.Number<>0) THEN
+    MsgOpt={VL_Stop TRUE,Clear_P_Reset TRUE,Log_To_DB FALSE}
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF
+  ;initializes MsgOpt depending on whether it is initialized or not
+  ON_ERROR_PROCEED 
+  nMsgNr=nMsgNr  
+  IF ($ERR.Number<>0) THEN
+    nMsgNr=1
+    ERR_CLEAR($ERR)
+  ELSE
+    ERR_RAISE($ERR)
+  ENDIF
+  ;initializes NoBrakes depending on whether it is initialized or not
+  ON_ERROR_PROCEED
+  NoBrakes=NoBrakes
+  IF  NOT($ERR.Number==0) THEN
+    NoBrakes=FALSE
+  ENDIF
+  ;initializes sText depending on whether it is initialized or not
+  IF  STRLEN(sText[])<1 THEN
+    sText[]="parameter sText[] is missing"
+  ENDIF
+  ;initializes sModul depending on whether it is initialized or not 
+  IF  STRLEN(sModul[])<1 THEN
+    sModul[]="Appl" 
+  ENDIF
+  ;initializes all 7 sDialogSK depending on whether it is initialized or not 
+  IF STRLEN(sDialogSK1[])<1 THEN
+    sDialogSK1[]=" "
+  ENDIF
+  IF STRLEN(sDialogSK2[])<1 THEN
+    sDialogSK2[]=" "
+  ENDIF
+  IF STRLEN(sDialogSK3[])<1 THEN
+    sDialogSK3[]=" "
+  ENDIF
+  IF STRLEN(sDialogSK4[])<1 THEN
+    sDialogSK4[]=" "
+  ENDIF
+  IF STRLEN(sDialogSK5[])<1 THEN
+    sDialogSK5[]=" "
+  ENDIF
+  IF STRLEN(sDialogSK6[])<1 THEN
+    sDialogSK6[]=" "
+  ENDIF
+  IF STRLEN(sDialogSK7[])<1 THEN
+    sDialogSK7[]=" "
+  ENDIF
+  IF STRLEN(sTextPar[])>0 THEN
+    MsgDialog(nAnswer,sText[],sModul[],sTextPar[],sDialogSK1[],sDialogSK2[],sDialogSK3[],sDialogSK4[],sDialogSK5[],sDialogSK6[],sDialogSK7[],NoBrakes,nMsgNr, MsgOpt)
+  ELSE
+    MsgDialog(nAnswer,sText[],sModul[],,sDialogSK1[],sDialogSK2[],sDialogSK3[],sDialogSK4[],sDialogSK5[],sDialogSK6[],sDialogSK7[],NoBrakes,nMsgNr, MsgOpt)
+  ENDIF
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD
+END ;(ArcMsgDialog)
+
+;*****************************************************************************************
+;call for verification of robot type
+;*****************************************************************************************
+GLOBAL DEFFCT BOOL Arc_SelectMsgType()
+;FOLD Details;%{PE}
+  ;FOLD Implementation
+  IF (ATBg_AdditionalOptions==0) THEN
+   RETURN TRUE ;Only ATB
+  ELSE
+   RETURN ATAg_WeldingMaster OR (ArcSyncList<2)
+  ENDIF
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD
+ENDFCT
+
+;*****************************************************************************************
+;call for program sync after dialog 
+;*****************************************************************************************
+GLOBAL DEFFCT INT Arc_ProcSyncAnswer(iAnswer:IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL INT iAnswer, errval
+  DECL CHAR RmdCmd[128]
+  DECL BOOL RemoteRes
+  ;ENDFOLD
+  ;FOLD Implementation
+  ATBg_DialogAnswer=-1
+  IF (ATBg_AdditionalOptions > 0) THEN
+   IF (ArcSyncList > 1) THEN
+    SyncCmd(#Progsync, "AnswerHandle", ArcSyncList)
+    IF ATAg_WeldingMaster THEN
+      ATBg_DialogAnswer=iAnswer
+      WAIT SEC 0.2
+    ELSE
+     REPEAT
+      WAIT SEC 0.2
+      RmdCmd[]=remoteread(ATAg_MasterName[],"ATBg_DialogAnswer", errval)
+      RemoteRes = StrToInt(RmdCmd[], ATBg_DialogAnswer)
+      iAnswer=ATBg_DialogAnswer
+     UNTIL (ATBg_DialogAnswer >= 0)
+    ENDIF
+    SyncCmd(#Progsync, "AnswerReceive", ArcSyncList)
+   ENDIF
+  ENDIF
+  RETURN iAnswer
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD
+ENDFCT
+;*****************************************************************************************
+;call for progamm sync on begin of dialog
+;*****************************************************************************************
+GLOBAL DEF Arc_ProcSyncMsg(DecisionRequest : IN)
+;FOLD Details;%{PE}
+  ;FOLD Declarations
+  DECL ATEg_DecisionRequest_T DecisionRequest 
+  ;ENDFOLD
+  ;FOLD Implementation
+  IF Arc_SelectMsgType() THEN
+   SWITCH DecisionRequest
+    CASE #MaxErrors
+     ArcMsgQuit("ColdSeamSelected","ATB",,ATBg_SeamName[],10301,Opt_VLSTOP_LOG)
+     ATB_ManuallyCutOffWire()
+    CASE #ServicePosReached
+     ArcMsgQuit("SeamSkipped","ATB",,ATBg_SeamName[],10318,Opt_VLSTOP_LOG)
+    ENDSWITCH
+    IF (ArcSyncList>1) THEN
+      SyncCmd(#Progsync, "QuitMsgAckn", ArcSyncList)
+    ENDIF
+  ELSE
+   SWITCH DecisionRequest
+    CASE #MaxErrors
+     ArcMsgNotify("ColdSeamSelected","ATB",,ATBg_SeamName[],10301,Opt_VLSTOP_LOG)
+     ATB_ManuallyCutOffWire() 
+    CASE #ServicePosReached
+     ArcMsgNotify("SeamSkipped","ATB",,ATBg_SeamName[],10318,Opt_VLSTOP_LOG)
+    ENDSWITCH
+    IF (ArcSyncList>1) THEN
+     SyncCmd(#Progsync, "QuitMsgAckn", ArcSyncList)
+    ENDIF
+  ENDIF
+  ;ENDFOLD ;(Implementation)
+;ENDFOLD 
+ END

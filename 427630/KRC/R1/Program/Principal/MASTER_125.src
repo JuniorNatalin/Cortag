@@ -1,0 +1,63 @@
+&ACCESS RVP
+&REL 8
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\Program\Principal
+DEF MASTER_125( )
+;FOLD INI;%{PE}
+  ;FOLD BASISTECH INI
+    GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+    INTERRUPT ON 3 
+    BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+;ENDFOLD (INI)
+
+;=======================================;
+;       Cinética Automação/IFA          ;
+;        Principal Master 125           ;
+;                                       ; 
+;=======================================;
+
+;FOLD Principal Master
+$LOOP_MSG[] ="    ======Principal Master 125============="
+
+
+
+;ENDFOLD (Principal Master)
+   
+
+ ;=======================================
+  WHILE (NOT Fim_De_Trabalho)
+   LOOP
+ 
+     IF (Lib_Mesa_B) THEN
+      LADO_B_OPERADOR()
+     ENDIF
+
+    IF (Lib_Soldar_Mesa_A) THEN
+  
+    NEW_MASTER_MESA_A()
+   ENDIF
+;=======================================
+
+ IF (Lib_Mesa_A) THEN
+   LADO_A_OPERADOR()
+ENDIF
+
+
+ IF (Lib_Soldar_Mesa_B) THEN
+ 
+ MASTER_125_LADO_B()
+   ENDIF
+
+;=======================================
+ENDLOOP
+
+ENDWHILE
+END
+
+
